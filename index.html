@@ -1,189 +1,258 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sheet Data Manager</title>
-    <!-- Load Tailwind CSS -->
+    <title>บันทึกพารามิเตอร์เครื่องจักรเย็บผ้า</title>
+    <!-- โหลด Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Use Inter font -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        /* กำหนดฟอนต์ Inter และความสวยงามพื้นฐาน */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f7f7;
+            background-color: #f3f4f6;
         }
-        /* Custom scrollbar style */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
+        .container {
+            max-width: 1400px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1; /* slate-300 */
+        .table-container {
+            overflow-x: auto;
+        }
+        /* Style for required fields in form (optional, but good practice) */
+        .required-label::after {
+            content: " *";
+            color: #ef4444; /* red-500 */
+        }
+        /* Custom scrollbar for better look */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
             border-radius: 4px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background-color: #f1f5f9; /* slate-100 */
-        }
-        .form-input {
-            @apply w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150;
-        }
-        .form-label {
-            @apply block text-sm font-medium text-gray-700 mb-1;
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
         }
     </style>
 </head>
-<body class="min-h-screen">
-
-    <!-- Main Application Container -->
-    <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        
-        <!-- Header -->
-        <header class="text-center py-6 bg-white rounded-xl shadow-lg mb-8">
-            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl">
-                ⚙️ ตั้งค่าและจัดการข้อมูลเครื่องจักร (Sheet Manager)
-            </h1>
-            <p class="mt-2 text-sm text-gray-500">เชื่อมต่อกับ Google Sheet ผ่าน Web App URL ของคุณ</p>
+<body class="p-4 md:p-8">
+    <div class="container mx-auto">
+        <header class="text-center mb-8 bg-white p-6 rounded-xl shadow-lg">
+            <h1 class="text-3xl font-extrabold text-blue-700">⚙️ บันทึกพารามิเตอร์เครื่องจักรเย็บผ้า</h1>
+            <p class="text-gray-600 mt-2">ระบบจัดการข้อมูล Model และ Part Name สำหรับการตั้งค่าจักรเย็บผ้า</p>
         </header>
 
-        <!-- Status Message Box -->
-        <div id="status-message" class="hidden fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl font-medium" role="alert"></div>
-        <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-30 z-40 hidden flex items-center justify-center">
-            <div class="flex flex-col items-center bg-white p-6 rounded-xl shadow-2xl">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p class="mt-3 text-gray-700 font-semibold">กำลังโหลด...</p>
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl flex items-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
+                <span class="text-lg font-medium text-gray-700">กำลังโหลดข้อมูล...</span>
             </div>
         </div>
 
-        <!-- Filter Panel & Add Button -->
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            
-            <!-- Model Filter -->
-            <div>
-                <label for="filter-model" class="form-label">Model:</label>
-                <select id="filter-model" class="form-input">
-                    <option value="" disabled selected>เลือก Model</option>
-                </select>
-            </div>
-            
-            <!-- Part Name Filter -->
-            <div>
-                <label for="filter-partName" class="form-label">Part Name:</label>
-                <select id="filter-partName" class="form-input">
-                    <option value="" disabled selected>เลือก Part Name</option>
-                </select>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="col-span-1 md:col-span-2 flex space-x-3 mt-2 md:mt-0">
-                <button onclick="loadFilteredRecords()" id="fetch-button"
-                    class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 shadow-md flex items-center justify-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.836 2l1.54 1.54a1.88 1.88 0 010 2.652l-1.54 1.54M4 13h16m0-4h16m-6 0v5m-8-5v5m-4-5v5"></path></svg>
-                    ดึงข้อมูล
-                </button>
-                <button onclick="openModal()"
-                    class="w-full md:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition duration-150 shadow-md flex items-center justify-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    เพิ่มข้อมูลใหม่
-                </button>
-            </div>
+        <!-- Toast Message for Success/Error -->
+        <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
+            <!-- Toast messages will be injected here -->
         </div>
 
-        <!-- Data Table -->
-        <div class="bg-white p-6 rounded-xl shadow-lg overflow-x-auto custom-scrollbar">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">ตารางข้อมูลการตั้งค่า</h2>
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead>
-                    <tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                        <th class="px-3 py-3 border-r">Model / Part Name</th>
-                        <th class="px-3 py-3 border-r">กระบวนการ/เครื่องจักร</th>
-                        <th class="px-3 py-3 border-r">การตั้งค่าหลัก</th>
-                        <th class="px-3 py-3 border-r">แรงตึงด้าย</th>
-                        <th class="px-3 py-3 border-r">แรงกดตีนผี / Stopper</th>
-                        <th class="px-3 py-3">ความเร็ว/ทักษะ</th>
-                        <th class="px-3 py-3 text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="data-table-body" class="divide-y divide-gray-200">
-                    <tr><td colspan="7" class="py-4 text-center text-gray-500">กรุณาเลือก Model และ Part Name แล้วกด "ดึงข้อมูล"</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <!-- Filter Section -->
+        <section id="filter-section" class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">ค้นหาพารามิเตอร์</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label for="model-filter" class="block text-sm font-medium text-gray-700 mb-1">Model:</label>
+                    <select id="model-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition duration-150 ease-in-out">
+                        <option value="">-- เลือก Model --</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="partname-filter" class="block text-sm font-medium text-gray-700 mb-1">Part Name:</label>
+                    <select id="partname-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition duration-150 ease-in-out">
+                        <option value="">-- เลือก Part Name --</option>
+                    </select>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="apply-filter-btn" class="w-full flex-1 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 ease-in-out shadow-md">
+                        ค้นหา
+                    </button>
+                    <button id="add-record-btn" class="w-full flex-1 bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300 ease-in-out shadow-md" onclick="openModal()">
+                        + เพิ่มข้อมูลใหม่
+                    </button>
+                </div>
+            </div>
+        </section>
 
+        <!-- Data Table Section -->
+        <section id="data-section" class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">ผลการค้นหา</h2>
+            <div id="table-message" class="text-center text-gray-500 p-8 hidden">
+                กรุณาเลือก Model และ Part Name เพื่อแสดงข้อมูล
+            </div>
+            <div class="table-container">
+                <table id="data-table" class="min-w-full divide-y divide-gray-200 border border-gray-200 hidden">
+                    <thead class="bg-blue-50">
+                        <!-- Table Headers will be injected here by renderTable -->
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="data-table-body">
+                        <!-- Table Rows will be injected here by renderTable -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </div>
 
-    <!-- Modal Form (Hidden by default) -->
-    <div id="data-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 hidden items-center justify-center p-4" onclick="if(event.target.id === 'data-modal') closeModal()">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar" onclick="event.stopPropagation()">
-            <div class="p-6">
-                <h3 id="modal-title" class="text-2xl font-bold text-gray-900 mb-4">เพิ่มข้อมูลใหม่</h3>
-                <form id="data-form" onsubmit="handleSave(event)">
-                    <!-- Hidden input for RowIndex (for updates) -->
-                    <input type="hidden" id="RowIndex" name="RowIndex">
+    <!-- Modal for Add/Edit Record -->
+    <div id="record-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target.id === 'record-modal') closeModal()">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 transform transition-all duration-300">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 id="modal-title" class="text-2xl font-bold text-blue-700">เพิ่มข้อมูลใหม่</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition duration-150">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <form id="record-form">
+                <input type="hidden" id="RowIndex" name="RowIndex">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Form Fields (Generated Dynamically or explicitly listed) -->
+                    <!-- I'll list the key fields explicitly for simplicity and control -->
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <!-- Group 1: Identifiers -->
-                        <div class="md:col-span-1 space-y-4">
-                            <h4 class="font-semibold text-blue-600 border-b pb-1 mb-2">ข้อมูลระบุตัวตน</h4>
-                            <div><label for="Model" class="form-label">Model <span class="text-red-500">*</span></label><input type="text" id="Model" name="Model" class="form-input" required></div>
-                            <div><label for="PartName" class="form-label">Part Name <span class="text-red-500">*</span></label><input type="text" id="PartName" name="PartName" class="form-input" required></div>
-                            <div><label for="ProcessNo" class="form-label">Process No.</label><input type="text" id="ProcessNo" name="ProcessNo" class="form-input"></div>
-                            <div><label for="MachineNo" class="form-label">Machine No.</label><input type="text" id="MachineNo" name="MachineNo" class="form-input"></div>
-                            <div><label for="ProcessName" class="form-label">ชื่อกระบวนการ</label><input type="text" id="ProcessName" name="ProcessName" class="form-input"></div>
-                        </div>
-
-                        <!-- Group 2: Stitch & Tension -->
-                        <div class="md:col-span-1 space-y-4">
-                            <h4 class="font-semibold text-blue-600 border-b pb-1 mb-2">การตั้งค่าด้าย/เข็ม/แรงตึง</h4>
-                            <div><label for="ThreadNo" class="form-label">เบอร์ด้าย</label><input type="text" id="ThreadNo" name="ThreadNo" class="form-input"></div>
-                            <div><label for="NeedleNo" class="form-label">เบอร์เข็ม</label><input type="text" id="NeedleNo" name="NeedleNo" class="form-input"></div>
-                            <div><label for="StitchLength" class="form-label">ฝีเข็ม</label><input type="text" id="StitchLength" name="StitchLength" class="form-input"></div>
-                            <div><label for="UpperTension" class="form-label">แรงตึงด้ายบน (N) STD + 3</label><input type="text" id="UpperTension" name="UpperTension" class="form-input"></div>
-                            <div><label for="LowerTension" class="form-label">แรงตึงด้ายล่าง (N) STD + 3</label><input type="text" id="LowerTension" name="LowerTension" class="form-input"></div>
-                        </div>
-
-                        <!-- Group 3: Pressure & Others -->
-                        <div class="md:col-span-1 space-y-4">
-                            <h4 class="font-semibold text-blue-600 border-b pb-1 mb-2">การตั้งค่าแรงกด/อื่นๆ</h4>
-                            <div><label for="OuterFootPressure" class="form-label">แรงกดตีนผีนอก (Kg) STD + 1</label><input type="text" id="OuterFootPressure" name="OuterFootPressure" class="form-input"></div>
-                            <div><label for="InnerFootPressure" class="form-label">แรงกดตีนผีใน (Kg) STD + 1</label><input type="text" id="InnerFootPressure" name="InnerFootPressure" class="form-input"></div>
-                            <div><label for="StopperDistance" class="form-label">ระยะ stopper ตะเข็บ (mm)</label><input type="text" id="StopperDistance" name="StopperDistance" class="form-input"></div>
-                            <div><label for="AirPressure" class="form-label">แรงลม (bar)</label><input type="text" id="AirPressure" name="AirPressure" class="form-input"></div>
-                            <div><label for="SpeedRPM" class="form-label">ความเร็วรอบ (rpm)</label><input type="text" id="SpeedRPM" name="SpeedRPM" class="form-input"></div>
-                            <div><label for="ManSkill" class="form-label">Man skill ≥</label><input type="text" id="ManSkill" name="ManSkill" class="form-input"></div>
-                        </div>
+                    <!-- Model (Text Input) -->
+                    <div>
+                        <label for="Model" class="block text-sm font-medium text-gray-700 required-label">Model</label>
+                        <input type="text" id="Model" name="Model" required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
 
-                    <!-- Footer Buttons -->
-                    <div class="mt-8 pt-4 border-t flex justify-end space-x-3">
-                        <button type="button" onclick="closeModal()"
-                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition duration-150">
-                            ยกเลิก
-                        </button>
-                        <button type="submit" id="save-button"
-                            class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 shadow-md flex items-center">
-                            บันทึกข้อมูล
-                        </button>
+                    <!-- PartName (Text Input) -->
+                    <div>
+                        <label for="PartName" class="block text-sm font-medium text-gray-700 required-label">Part Name</label>
+                        <input type="text" id="PartName" name="PartName" required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     </div>
-                </form>
+                    
+                    <!-- ProcessNo (Text Input) -->
+                    <div>
+                        <label for="ProcessNo" class="block text-sm font-medium text-gray-700">Process No.</label>
+                        <input type="text" id="ProcessNo" name="ProcessNo" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- MachineNo (Text Input) -->
+                    <div>
+                        <label for="MachineNo" class="block text-sm font-medium text-gray-700">Machine No.</label>
+                        <input type="text" id="MachineNo" name="MachineNo" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- ProcessName (Text Input) -->
+                    <div>
+                        <label for="ProcessName" class="block text-sm font-medium text-gray-700">ชื่อกระบวนการ</label>
+                        <input type="text" id="ProcessName" name="ProcessName" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- ThreadNo (Text Input) -->
+                    <div>
+                        <label for="ThreadNo" class="block text-sm font-medium text-gray-700">เบอร์ด้าย</label>
+                        <input type="text" id="ThreadNo" name="ThreadNo" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- NeedleNo (Text Input) -->
+                    <div>
+                        <label for="NeedleNo" class="block text-sm font-medium text-gray-700">เบอร์เข็ม</label>
+                        <input type="text" id="NeedleNo" name="NeedleNo" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- StitchLength (Number Input) -->
+                    <div>
+                        <label for="StitchLength" class="block text-sm font-medium text-gray-700">ฝีเข็ม</label>
+                        <input type="number" step="any" id="StitchLength" name="StitchLength" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- UpperTension (Number Input) -->
+                    <div>
+                        <label for="UpperTension" class="block text-sm font-medium text-gray-700">แรงตึงด้ายบน (N) STD + 3</label>
+                        <input type="number" step="any" id="UpperTension" name="UpperTension" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- LowerTension (Number Input) -->
+                    <div>
+                        <label for="LowerTension" class="block text-sm font-medium text-gray-700">แรงตึงด้ายล่าง (N) STD + 3</label>
+                        <input type="number" step="any" id="LowerTension" name="LowerTension" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- OuterFootPressure (Number Input) -->
+                    <div>
+                        <label for="OuterFootPressure" class="block text-sm font-medium text-gray-700">แรงกดตีนผีนอก (Kg) STD + 1</label>
+                        <input type="number" step="any" id="OuterFootPressure" name="OuterFootPressure" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- InnerFootPressure (Number Input) -->
+                    <div>
+                        <label for="InnerFootPressure" class="block text-sm font-medium text-gray-700">แรงกดตีนผีใน (Kg) STD + 1</label>
+                        <input type="number" step="any" id="InnerFootPressure" name="InnerFootPressure" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- StopperDistance (Number Input) -->
+                    <div>
+                        <label for="StopperDistance" class="block text-sm font-medium text-gray-700">ระยะ stopper ตะเข็บ (mm)</label>
+                        <input type="number" step="any" id="StopperDistance" name="StopperDistance" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- AirPressure (Number Input) -->
+                    <div>
+                        <label for="AirPressure" class="block text-sm font-medium text-gray-700">แรงลม (bar)</label>
+                        <input type="number" step="any" id="AirPressure" name="AirPressure" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- SpeedRPM (Number Input) -->
+                    <div>
+                        <label for="SpeedRPM" class="block text-sm font-medium text-gray-700">ความเร็วรอบ (rpm)</label>
+                        <input type="number" step="1" id="SpeedRPM" name="SpeedRPM" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- ManSkill (Number Input) -->
+                    <div>
+                        <label for="ManSkill" class="block text-sm font-medium text-gray-700">Man skill ≥</label>
+                        <input type="number" step="any" id="ManSkill" name="ManSkill" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="mt-8 pt-4 border-t flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition duration-150">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 shadow-md">
+                        บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal for Deletion -->
+    <div id="confirm-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target.id === 'confirm-modal') hideConfirmModal()">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all duration-300">
+            <h3 class="text-xl font-bold text-red-600 mb-4">ยืนยันการลบ</h3>
+            <p class="text-gray-700 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="hideConfirmModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition duration-150">
+                    ยกเลิก
+                </button>
+                <button type="button" id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition duration-150 shadow-md">
+                    ยืนยันการลบ
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- Configuration ---
-        // URL ที่ได้รับการอัปเดตแล้ว:
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx8WPZRb3tQVbdZ1VUdIYNgFbFGa99GcrBtWr03DNXk2ju_SYd7aYmBWcw81vfbD-9kmQ/exec';
-        
-        // Keys must match KEY_MAP in google_app_script.gs
-        const FIELD_KEYS = [
-            'Model', 'PartName', 'ProcessNo', 'MachineNo', 'ProcessName', 
-            'ThreadNo', 'NeedleNo', 'StitchLength', 'UpperTension', 'LowerTension', 
-            'OuterFootPressure', 'InnerFootPressure', 'StopperDistance', 'AirPressure', 
-            'SpeedRPM', 'ManSkill'
-        ];
+        // *** CONFIGURATION ***
+        // URL ของ Google Apps Script Web App (Development URL)
+        // **โปรดเปลี่ยนเป็น '.../exec' เมื่อ Deploy เป็นเวอร์ชันจริง**
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxKoYgiuHjzj7FOKtVOQScGU7_HOYZN0C6_c5Rlg1fp/dev';
 
-        // Thai labels for display (must match HEADERS in GS for consistency)
-        const FIELD_LABELS = {
+        // Map Keys (เหมือนกับใน Code.gs)
+        const KEY_MAP = {
             "Model": "Model",
             "PartName": "Part Name",
             "ProcessNo": "Process No.",
@@ -201,328 +270,383 @@
             "SpeedRPM": "ความเร็วรอบ (rpm)",
             "ManSkill": "Man skill ≥"
         };
-        
-        // --- State Management ---
-        let uniqueModels = [];
-        let uniquePartNames = [];
+        const HEADERS = Object.values(KEY_MAP);
+        const KEYS = Object.keys(KEY_MAP);
 
-        // --- Utility Functions ---
+        // DOM Elements
+        const loadingEl = document.getElementById('loading');
+        const modelFilterEl = document.getElementById('model-filter');
+        const partnameFilterEl = document.getElementById('partname-filter');
+        const applyFilterBtn = document.getElementById('apply-filter-btn');
+        const dataTableBody = document.getElementById('data-table-body');
+        const dataTable = document.getElementById('data-table');
+        const tableMessage = document.getElementById('table-message');
+        const recordModal = document.getElementById('record-modal');
+        const recordForm = document.getElementById('record-form');
+        const modalTitle = document.getElementById('modal-title');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 
-        /** Shows a temporary, styled alert message. */
-        function showAlert(message, type = 'success') {
-            const el = document.getElementById('status-message');
-            el.textContent = message;
-            el.classList.remove('hidden', 'bg-red-500', 'bg-green-500', 'opacity-0');
-            el.classList.add('opacity-100');
+        let isFetching = false;
 
-            if (type === 'error') {
-                el.classList.add('bg-red-500', 'text-white');
-            } else {
-                el.classList.add('bg-green-500', 'text-white');
-            }
-            
-            el.classList.add('transition-opacity', 'duration-300');
-            setTimeout(() => {
-                el.classList.remove('opacity-100');
-                el.classList.add('opacity-0');
-                setTimeout(() => {
-                    el.classList.add('hidden');
-                }, 300);
-            }, 5000);
-        }
+        // ====================================================================
+        // --- API Helper Functions ---
+        // ====================================================================
 
-        /** Shows/hides the loading overlay. */
-        function toggleLoading(show) {
-            document.getElementById('loading-overlay').classList.toggle('hidden', !show);
-        }
-        
-        /** Generic function to call the Google Apps Script Web App */
-        async function fetchData(action, params = {}, method = 'GET', body = null) {
-            const url = new URL(WEB_APP_URL);
-            url.searchParams.set('action', action);
+        /**
+         * ส่ง request ไปยัง Google Apps Script (GET method)
+         * @param {string} action - ชนิดของ action
+         * @param {object} params - พารามิเตอร์สำหรับ GET
+         */
+        async function fetchData(action, params = {}) {
+            if (isFetching) return;
+            isFetching = true;
+            loadingEl.classList.remove('hidden');
 
-            // Add GET parameters
-            if (method === 'GET') {
-                Object.keys(params).forEach(key => url.searchParams.set(key, params[key]));
-            }
+            const urlParams = new URLSearchParams(params);
+            urlParams.append('action', action);
+            const url = `${WEB_APP_URL}?${urlParams.toString()}`;
 
-            const options = {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            };
-
-            if (method === 'POST' && body) {
-                options.body = JSON.stringify({ action, data: body });
-            }
-
-            toggleLoading(true);
-            
             try {
-                const response = await fetch(url.toString(), options);
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success) {
+                    return data.data;
+                } else {
+                    throw new Error(data.error || 'Failed to fetch data from server.');
+                }
+            } catch (error) {
+                showToast('error', `เกิดข้อผิดพลาดในการโหลด: ${error.message}`);
+                console.error('Fetch Error:', error);
+                return null;
+            } finally {
+                isFetching = false;
+                loadingEl.classList.add('hidden');
+            }
+        }
+
+        /**
+         * ส่ง request ไปยัง Google Apps Script (POST method)
+         * @param {string} action - ชนิดของ action
+         * @param {object} data - ข้อมูลที่จะส่ง
+         */
+        async function postData(action, data) {
+            if (isFetching) return { success: false, error: 'Request in progress.' };
+            isFetching = true;
+            loadingEl.classList.remove('hidden');
+
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action, data }),
+                });
+
                 const result = await response.json();
                 
-                if (!result.success) {
-                    throw new Error(result.error || `Action failed: ${action}`);
+                if (result.success) {
+                    showToast('success', result.message || 'ดำเนินการสำเร็จ');
+                } else {
+                    throw new Error(result.error || 'Failed to process request.');
                 }
                 return result;
             } catch (error) {
-                console.error(`Error in ${action}:`, error);
-                showAlert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}`, 'error');
+                showToast('error', `เกิดข้อผิดพลาด: ${error.message}`);
+                console.error('Post Error:', error);
                 return { success: false, error: error.message };
             } finally {
-                toggleLoading(false);
+                isFetching = false;
+                loadingEl.classList.add('hidden');
             }
         }
 
-        // --- Modal/Form Functions ---
+        // ====================================================================
+        // --- UI Logic & Data Rendering ---
+        // ====================================================================
 
-        /** Clears the form and closes the modal. */
-        function closeModal() {
-            document.getElementById('data-modal').classList.add('hidden');
-            document.getElementById('data-modal').classList.remove('flex');
-            document.getElementById('data-form').reset();
-            // Clear hidden RowIndex
-            document.getElementById('RowIndex').value = '';
-        }
-
-        /** Opens the modal, optionally populating data for editing. */
-        function openModal(record = null) {
-            const modalTitle = document.getElementById('modal-title');
-            
-            if (record) {
-                modalTitle.textContent = 'แก้ไขข้อมูลการตั้งค่า';
-                document.getElementById('RowIndex').value = record.id;
-                // Populate form fields
-                FIELD_KEYS.forEach(key => {
-                    const el = document.getElementById(key);
-                    if (el) el.value = record[key] || '';
-                });
-            } else {
-                modalTitle.textContent = 'เพิ่มข้อมูลใหม่';
-                document.getElementById('data-form').reset();
-                document.getElementById('RowIndex').value = '';
-                
-                // Pre-fill Model/PartName if filters are selected
-                const filterModel = document.getElementById('filter-model').value;
-                const filterPartName = document.getElementById('filter-partName').value;
-                
-                if (filterModel) document.getElementById('Model').value = filterModel;
-                if (filterPartName) document.getElementById('PartName').value = filterPartName;
-            }
-
-            document.getElementById('data-modal').classList.add('flex');
-            document.getElementById('data-modal').classList.remove('hidden');
-        }
-
-        /** Handles saving (insert or update) data to the sheet. */
-        async function handleSave(event) {
-            event.preventDefault();
-            
-            const form = document.getElementById('data-form');
-            const RowIndex = document.getElementById('RowIndex').value;
-            const formData = new FormData(form);
-            const dataToSave = {};
-
-            // Collect all fields defined in FIELD_KEYS (from GS script)
-            FIELD_KEYS.forEach(key => {
-                const value = formData.get(key);
-                // Ensure empty strings are saved as empty in the sheet
-                dataToSave[key] = value ? value.trim() : ''; 
-            });
-
-            // Include RowIndex if it's an update
-            if (RowIndex) {
-                dataToSave.RowIndex = RowIndex;
-            }
-
-            const result = await fetchData('save', {}, 'POST', dataToSave);
-
-            if (result.success) {
-                showAlert(result.message);
-                closeModal();
-                // Reload the records to show the update/new record
-                await loadUniqueFilters(); // Ensure filters are updated if new Model/PartName was added
-                await loadFilteredRecords();
-            }
-        }
-
-        /** Handles deleting a record from the sheet. */
-        async function handleDelete(id) {
-            if (!window.confirm('คุณยืนยันที่จะลบข้อมูลรายการนี้หรือไม่?')) return; // Simple confirmation modal is necessary here for action confirmation
-
-            const dataToDelete = { RowIndex: id };
-            const result = await fetchData('delete', {}, 'POST', dataToDelete);
-            
-            if (result.success) {
-                showAlert(result.message);
-                // Reload the records to show the change
-                await loadUniqueFilters(); 
-                await loadFilteredRecords();
-            }
-        }
-
-
-        // --- Data Loading Functions ---
-
-        /** Populates the filter dropdowns (Model and Part Name). */
+        /**
+         * โหลดค่า Model และ Part Name ที่ไม่ซ้ำกันสำหรับ Dropdown
+         */
         async function loadUniqueFilters() {
-            const result = await fetchData('read_unique');
+            const data = await fetchData('read_unique');
+            if (data) {
+                modelFilterEl.innerHTML = '<option value="">-- เลือก Model --</option>';
+                partnameFilterEl.innerHTML = '<option value="">-- เลือก Part Name --</option>';
 
-            if (result.success) {
-                uniqueModels = result.data.uniqueModels.sort();
-                uniquePartNames = result.data.uniquePartNames.sort();
-                
-                const modelSelect = document.getElementById('filter-model');
-                const partNameSelect = document.getElementById('filter-partName');
-
-                // Function to populate a select element
-                const populateSelect = (selectEl, options, label) => {
-                    // Store current selected value
-                    const currentValue = selectEl.value; 
-                    
-                    selectEl.innerHTML = `<option value="" disabled ${!currentValue ? 'selected' : ''}>เลือก ${label}</option>`;
-                    options.forEach(option => {
-                        const isSelected = option === currentValue ? 'selected' : '';
-                        selectEl.innerHTML += `<option value="${option}" ${isSelected}>${option}</option>`;
-                    });
-                    
-                    // If the previously selected value no longer exists, reset selection
-                    if (currentValue && !options.includes(currentValue)) {
-                        selectEl.value = "";
-                    }
-                };
-
-                populateSelect(modelSelect, uniqueModels, 'Model');
-                populateSelect(partNameSelect, uniquePartNames, 'Part Name');
+                data.uniqueModels.sort().forEach(model => {
+                    modelFilterEl.innerHTML += `<option value="${model}">${model}</option>`;
+                });
+                data.uniquePartNames.sort().forEach(partName => {
+                    partnameFilterEl.innerHTML += `<option value="${partName}">${partName}</option>`;
+                });
             }
         }
 
-        /** Loads and displays filtered records based on current selections. */
-        async function loadFilteredRecords() {
-            const model = document.getElementById('filter-model').value;
-            const partName = document.getElementById('filter-partName').value;
-            const tableBody = document.getElementById('data-table-body');
-            
+        /**
+         * ใช้ตัวกรองและแสดงข้อมูลในตาราง
+         */
+        async function applyFilter() {
+            const model = modelFilterEl.value.trim();
+            const partName = partnameFilterEl.value.trim();
+
+            dataTableBody.innerHTML = '';
+            dataTable.classList.add('hidden');
+            tableMessage.classList.remove('hidden');
+            tableMessage.textContent = 'กำลังโหลด...';
+
             if (!model || !partName) {
-                tableBody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-red-500 font-semibold">! กรุณาเลือกทั้ง Model และ Part Name !</td></tr>`;
+                tableMessage.textContent = 'กรุณาเลือก Model และ Part Name ให้ครบถ้วน';
                 return;
             }
 
-            const result = await fetchData('read_filtered', { model, partName });
-            
-            if (result.success) {
-                const records = result.data.records;
-                tableBody.innerHTML = ''; // Clear existing data
+            const data = await fetchData('read_filtered', { model, partName });
 
-                if (records.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-gray-500">ไม่พบข้อมูลสำหรับเงื่อนไขที่เลือก</td></tr>`;
-                    return;
-                }
-
-                records.forEach(record => {
-                    const row = document.createElement('tr');
-                    row.className = 'hover:bg-gray-50 transition duration-150';
-                    
-                    // Row content (grouped for table readability)
-                    row.innerHTML = `
-                        <!-- Model / Part Name -->
-                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm font-bold text-gray-900">
-                            ${record.Model || '-'} / ${record.PartName || '-'}
-                        </td>
-                        <!-- Process / Machine -->
-                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm text-gray-700">
-                            <span class="font-semibold">${record.ProcessName || '-'}</span><br>
-                            <span class="text-xs text-gray-500">${record.ProcessNo || '-'} / ${record.MachineNo || '-'}</span>
-                        </td>
-                        <!-- Main Settings -->
-                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm text-gray-700">
-                            <span class="block">ด้าย: ${record.ThreadNo || '-'} / เข็ม: ${record.NeedleNo || '-'}</span>
-                            <span class="text-xs text-gray-500">ฝีเข็ม: ${record.StitchLength || '-'}</span>
-                        </td>
-                        <!-- Tension -->
-                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm text-gray-700">
-                            บน: ${record.UpperTension || '-'} N<br>
-                            ล่าง: ${record.LowerTension || '-'} N
-                        </td>
-                        <!-- Pressure / Stopper -->
-                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm text-gray-700">
-                            นอก: ${record.OuterFootPressure || '-'} Kg<br>
-                            ใน: ${record.InnerFootPressure || '-'} Kg<br>
-                            <span class="text-xs text-gray-500">Stopper: ${record.StopperDistance || '-'} mm</span>
-                        </td>
-                        <!-- Speed / Man Skill -->
-                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700">
-                            RPM: ${record.SpeedRPM || '-'} / ลม: ${record.AirPressure || '-'} bar<br>
-                            <span class="font-semibold text-xs text-blue-600">Skill: ${record.ManSkill || '-'}</span>
-                        </td>
-                        <!-- Actions -->
-                        <td class="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
-                            <button onclick='openModal(${JSON.stringify(record)})' class="text-indigo-600 hover:text-indigo-900 mr-2 p-1 rounded hover:bg-indigo-100 transition">
-                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                            </button>
-                            <button onclick='handleDelete(${record.id})' class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 transition">
-                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                });
+            if (data && data.records) {
+                renderTable(data.records);
+            } else {
+                tableMessage.textContent = 'ไม่พบข้อมูลตามตัวกรองที่เลือก';
             }
         }
 
-        // --- Initialization ---
-        window.onload = function() {
-            // Load filters on startup
-            loadUniqueFilters();
+        /**
+         * สร้างตารางและใส่ข้อมูล
+         * @param {Array<object>} records - ข้อมูลรายการพารามิเตอร์
+         */
+        function renderTable(records) {
+            const tableHead = dataTable.querySelector('thead');
+            const tableBody = dataTableBody;
+            
+            // 1. Render Headers
+            tableHead.innerHTML = `
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                    ${HEADERS.map(header => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${header}</th>`).join('')}
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                </tr>
+            `;
 
-            // Add event listeners to filters to automatically select the first option
-            document.getElementById('filter-model').addEventListener('change', (e) => {
-                if(e.target.value) {
-                    // When Model changes, ensure PartName is selected (if only one option)
-                    const partNameSelect = document.getElementById('filter-partName');
-                    // Check if there are only 2 options (the placeholder and one actual value) and the placeholder is selected
-                    if (partNameSelect.options.length === 2 && partNameSelect.value === "") {
-                        partNameSelect.selectedIndex = 1; 
+            // 2. Render Body
+            tableBody.innerHTML = '';
+            if (records.length === 0) {
+                tableMessage.textContent = 'ไม่พบข้อมูลตามตัวกรองที่เลือก';
+                dataTable.classList.add('hidden');
+                tableMessage.classList.remove('hidden');
+                return;
+            }
+
+            records.forEach((record, index) => {
+                const row = tableBody.insertRow();
+                row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+                // Row Number and ID (RowIndex from GAS)
+                row.insertCell().textContent = index + 1;
+                row.setAttribute('data-row-index', record.id); // record.id holds the RowIndex from GAS
+
+                // Data Cells
+                KEYS.forEach(key => {
+                    const cell = row.insertCell();
+                    cell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700';
+                    cell.textContent = record[key] !== null ? record[key] : '-';
+                });
+
+                // Action Cell
+                const actionCell = row.insertCell();
+                actionCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
+                actionCell.innerHTML = `
+                    <button onclick="openModal(${record.id}, this.parentNode.parentNode)" class="text-blue-600 hover:text-blue-900 mr-3 transition duration-150">แก้ไข</button>
+                    <button onclick="showConfirmModal(${record.id})" class="text-red-600 hover:text-red-900 transition duration-150">ลบ</button>
+                `;
+            });
+
+            dataTable.classList.remove('hidden');
+            tableMessage.classList.add('hidden');
+        }
+
+        /**
+         * แสดง Toast Notification
+         * @param {string} type - 'success' or 'error'
+         * @param {string} message - ข้อความ
+         */
+        function showToast(type, message) {
+            const toastContainer = document.getElementById('toast-container');
+            const color = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            const icon = type === 'success' 
+                ? '<svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+                : '<svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+
+            const toast = document.createElement('div');
+            toast.className = `p-4 flex items-center text-white rounded-lg shadow-lg ${color} transition-opacity duration-300 ease-in-out opacity-0`;
+            toast.innerHTML = `${icon}<span>${message}</span>`;
+            
+            toastContainer.appendChild(toast);
+            
+            // Fade in
+            setTimeout(() => {
+                toast.classList.remove('opacity-0');
+            }, 10);
+
+            // Fade out and remove
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // ====================================================================
+        // --- Modal & Form Logic ---
+        // ====================================================================
+
+        /**
+         * เปิด Modal สำหรับเพิ่ม/แก้ไข
+         * @param {number} rowIndex - Row Index สำหรับการแก้ไข (เป็น undefined/null สำหรับเพิ่มใหม่)
+         * @param {HTMLElement} rowEl - Element แถวข้อมูลสำหรับดึงค่ามาใส่ (เฉพาะตอนแก้ไข)
+         */
+        function openModal(rowIndex, rowEl) {
+            recordForm.reset();
+            recordForm.querySelector('#RowIndex').value = '';
+
+            if (rowIndex && rowEl) {
+                // Edit Mode
+                modalTitle.textContent = 'แก้ไขข้อมูลพารามิเตอร์';
+                recordForm.querySelector('#RowIndex').value = rowIndex;
+                
+                // Populate form fields
+                const dataCells = rowEl.querySelectorAll('td');
+                
+                // Skip the first cell (index 0) which is the row number
+                KEYS.forEach((key, index) => {
+                    const cellValue = dataCells[index + 1].textContent;
+                    const input = recordForm.querySelector(`#${key}`);
+                    if (input) {
+                        // Use raw value unless it's the placeholder '-'
+                        input.value = cellValue === '-' ? '' : cellValue;
                     }
-                    loadFilteredRecords();
+                });
+
+                // Model และ PartName ต้องถูก Disable เมื่อแก้ไข
+                document.getElementById('Model').disabled = true;
+                document.getElementById('PartName').disabled = true;
+
+            } else {
+                // Add Mode
+                modalTitle.textContent = 'เพิ่มข้อมูลใหม่';
+                
+                // Model และ PartName ต้องถูก Enable เมื่อเพิ่มใหม่
+                document.getElementById('Model').disabled = false;
+                document.getElementById('PartName').disabled = false;
+                
+                // Pre-fill Model and PartName from filter if selected
+                document.getElementById('Model').value = modelFilterEl.value.trim() || '';
+                document.getElementById('PartName').value = partnameFilterEl.value.trim() || '';
+            }
+
+            recordModal.classList.remove('hidden');
+        }
+
+        /**
+         * ปิด Modal
+         */
+        function closeModal() {
+            recordModal.classList.add('hidden');
+            // Ensure Model/PartName are re-enabled after closing
+            document.getElementById('Model').disabled = false;
+            document.getElementById('PartName').disabled = false;
+        }
+
+        /**
+         * จัดการการบันทึกข้อมูล (Submit Form)
+         */
+        recordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // 1. Collect data from form
+            const formData = new FormData(recordForm);
+            const data = {};
+            for (const [key, value] of formData.entries()) {
+                // Convert empty strings to null/undefined if necessary, or ensure numerical values are parsed
+                data[key] = value.trim() === '' ? null : value.trim(); 
+            }
+
+            // 2. Perform save operation
+            const result = await postData('save', data);
+
+            // 3. Handle result
+            if (result.success) {
+                closeModal();
+                // Reload filters and re-apply current filter
+                await loadUniqueFilters();
+                if (modelFilterEl.value && partnameFilterEl.value) {
+                    applyFilter();
+                } else {
+                    // If no filter selected, just clear the table
+                    dataTableBody.innerHTML = '';
+                    dataTable.classList.add('hidden');
+                    tableMessage.classList.remove('hidden');
+                    tableMessage.textContent = 'กรุณาเลือก Model และ Part Name ให้ครบถ้วน';
                 }
-            });
-            document.getElementById('filter-partName').addEventListener('change', () => {
-                const model = document.getElementById('filter-model').value;
-                const partName = document.getElementById('filter-partName').value;
-                // Only load if both selections are made
-                if (model && partName) {
-                    loadFilteredRecords();
+            }
+        });
+
+
+        // ====================================================================
+        // --- Deletion & Confirmation Logic ---
+        // ====================================================================
+
+        let currentRowIndexToDelete = null;
+
+        /**
+         * แสดง Modal ยืนยันการลบ
+         * @param {number} rowIndex - Row Index ของแถวที่จะลบ
+         */
+        function showConfirmModal(rowIndex) {
+            currentRowIndexToDelete = rowIndex;
+            confirmModal.classList.remove('hidden');
+        }
+
+        /**
+         * ซ่อน Modal ยืนยัน
+         */
+        function hideConfirmModal() {
+            confirmModal.classList.add('hidden');
+            currentRowIndexToDelete = null;
+        }
+
+        /**
+         * ดำเนินการลบข้อมูลจริง
+         */
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (currentRowIndexToDelete) {
+                hideConfirmModal();
+                
+                const result = await postData('delete', { RowIndex: currentRowIndexToDelete });
+
+                if (result.success) {
+                    // Reload filters and re-apply current filter
+                    await loadUniqueFilters();
+                    applyFilter();
                 }
-            });
-        };
+            }
+        });
+
+
+        // ====================================================================
+        // --- Initialization ---
+        // ====================================================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUniqueFilters();
+            
+            // Set initial message
+            tableMessage.textContent = 'กรุณาเลือก Model และ Part Name เพื่อแสดงข้อมูล';
+            tableMessage.classList.remove('hidden');
+
+            // Attach event listener for filter button
+            applyFilterBtn.addEventListener('click', applyFilter);
+        });
 
     </script>
 </body>
-<!DOCTYPE html>
-<html>
-  <body>
-    <button onclick="testConnect()">ทดสอบเชื่อมต่อ</button>
-    <div id="result"></div>
-
-    <script>
-      function testConnect() {
-        google.script.run
-          .withSuccessHandler(function(response) {
-            document.getElementById("result").innerText = "เชื่อมต่อได้: " + response;
-          })
-          .withFailureHandler(function(err) {
-            document.getElementById("result").innerText = "❌ เชื่อมต่อไม่ได้: " + err.message;
-          })
-          .checkConnection(); // เรียกฟังก์ชันใน Code.gs
-      }
-    </script>
-  </body>
 </html>
-
-
-
-
-
