@@ -501,5 +501,26 @@
 
     </script>
 </body>
+<!DOCTYPE html>
+<html>
+  <body>
+    <button onclick="testConnect()">ทดสอบเชื่อมต่อ</button>
+    <div id="result"></div>
+
+    <script>
+      function testConnect() {
+        google.script.run
+          .withSuccessHandler(function(response) {
+            document.getElementById("result").innerText = "เชื่อมต่อได้: " + response;
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById("result").innerText = "❌ เชื่อมต่อไม่ได้: " + err.message;
+          })
+          .checkConnection(); // เรียกฟังก์ชันใน Code.gs
+      }
+    </script>
+  </body>
 </html>
+
+
 
