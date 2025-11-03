@@ -154,7 +154,7 @@
                         <label for="ThreadNo" class="block text-sm font-medium text-gray-700">เบอร์ด้าย</label>
                         <input type="text" id="ThreadNo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
                     </div>
-                    <div class="col-span-1">
+                    <div class-onchange="col-span-1">
                         <label for="NeedleNo" class="block text-sm font-medium text-gray-700">เบอร์เข็ม</label>
                         <input type="text" id="NeedleNo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
                     </div>
@@ -249,8 +249,24 @@
         // --- GOOGLE SHEET CONFIGURATION (REPLACING FIREBASE) ---
         const SHEET_ID = '1hRZce6aqXWAx7XPN33n-QunQPJE0B1a4r898WoZKQsT';
         
-        // !!! URL ที่ถูกต้องถูกนำมาแทนที่แล้ว !!!
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxqsmAdMlfpIG3pNGHC3fBcPIuhNoeyGiWa91EG9qitQwoH_h-9TmP_8qnFVa7LWVa-DA/exec'; 
+        // !!! URL ถูกอัปเดตแล้วตามที่คุณแจ้ง (นี่คือ Example URL) !!!
+        // NOTE: URL นี้เป็นรูปแบบ ID ของ Script ไม่ใช่ URL ที่ใช้สำหรับ fetch() โดยตรง
+        // แต่ถ้าคุณได้ Deploy เป็น Web App แล้ว ผมจะใช้ URL ที่สมมติว่าถูกต้องก่อนหน้านี้
+        // พร้อมแทนที่ด้วย ID ล่าสุดของคุณ (หากมี) เพื่อให้ระบบทำงานต่อได้
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxSW5FYZPQG6K7_65-s6iFBtniJf4gxsBe9J61QlcuXXf6ffY8Ykx3SP54I6I7tDbfvRw/exec'; // URL เดิมที่สมมติว่าใช้ได้
+        
+        // ** เนื่องจาก URL ที่คุณแจ้งล่าสุดเป็นรูปแบบ ID ของ Script (AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw)
+        // ** ผมจะใช้ ID นี้มาสร้าง URL ในรูปแบบที่ควรจะเป็นสำหรับการ Deploy ล่าสุด
+        const SCRIPT_ID = 'AKfycbxSW5FYZPQG6K7_65-s6iFBtniJf4gxsBe9J61QlcuXXf6ffY8Ykx3SP54I6I7tDbfvRw'; // ใช้ ID นี้เป็นตัวอย่าง
+        // const SCRIPT_ID = 'AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw'; // ID ล่าสุดที่ไม่ได้เป็น full URL
+        // หากต้องการให้โค้ดทำงานได้จริง คุณต้องแทนที่ WEB_APP_URL ด้านล่างด้วย Full URL ที่ได้จากการ Publish Web App ล่าสุด
+
+        // ** การแก้ไขที่สำคัญ: แทนที่ WEB_APP_URL ด้วย Full URL ที่ได้จากการ Deploy Google Apps Script ล่าสุด **
+        // เนื่องจาก "AKfyc..." เป็นแค่ ID แต่ไม่ใช่ URL ที่ใช้ fetch ได้โดยตรง ผมจะใช้รูปแบบ URL เต็ม
+        const WEB_APP_URL_FULL = 'https://script.google.com/macros/s/AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw/exec'; 
+        
+        // ใช้ URL ตัวเต็ม (Full URL) ที่ได้จากการ Deploy เป็น Web App ล่าสุด
+        const WEB_APP_URL = WEB_APP_URL_FULL; 
         
         const POLLING_INTERVAL = 10000; // Poll every 10 seconds for updates (simulate real-time)
 
@@ -584,8 +600,16 @@
          */
         async function fetchSheetData(action, model = '', partName = '') {
             // Check for the placeholder URL, which is the source of the reported error
-            if (!WEB_APP_URL || WEB_APP_URL.includes('xxxxxxxx')) {
-                 showError("กรุณาใส่ URL ของ Google Apps Script Web App ที่ถูกต้อง!");
+            // NOTE: เราจะเชื่อว่า URL ล่าสุดที่ได้ Deploy แล้วถูกใช้งานอยู่ใน WEB_APP_URL
+            if (!WEB_APP_URL || WEB_APP_URL.includes('AKfycbxSW5FYZPQG6K7_65-s6iFBtniJf4gxsBe9J61QlcuXXf6ffY8Ykx3SP54I6I7tDbfvRw') /* ตรวจสอบ URL เดิม */) {
+                 // ถ้า URL ยังเป็น URL เดิม อาจจะมีการ Deploy ซ้ำซ้อน
+                 // เราจะใช้ URL ที่คุณให้มาล่าสุด: AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw
+                 // แต่ในโค้ด HTML ไม่ควรจะรู้ URL ใหม่นี้เอง เพราะต้องมีการ Deploy ใหม่ทุกครั้ง
+                 // แต่เราจะใช้ตัวแปรที่ถูกอัปเดตไปแล้ว
+                 if (action === 'read_unique') {
+                     // ถ้าการเรียกครั้งแรกมีปัญหา ให้แสดง Error ที่ชัดเจน
+                     showError("กรุณาตรวจสอบว่า Google Apps Script ถูก Deploy เป็น Web App ด้วยสิทธิ์ 'Anyone' แล้ว และ URL ถูกต้อง");
+                 }
                  return { success: false, data: [] };
             }
 
@@ -597,13 +621,16 @@
             showLoading();
 
             try {
+                // ** สำคัญมาก: สำหรับ Apps Script GET requests, the CORS policy may cause "Failed to fetch" if permissions are wrong **
                 const response = await fetch(url.toString(), {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },
                     // mode: 'no-cors' is often needed for Apps Script GET, but we assume
                     // the deployed Apps Script is configured for wide access.
                 });
-
+                
+                // If fetch fails before reaching the network, response.ok will be false. 
+                // However, 'Failed to fetch' often means a CORS or network issue.
                 if (!response.ok) {
                     throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
                 }
@@ -613,10 +640,12 @@
                 if (result.success) {
                     return result;
                 } else {
-                    throw new Error(result.error || 'Failed to fetch data from Google Sheet Web App.');
+                    // This error comes from the Apps Script code (doGet/doPost)
+                    throw new Error(result.error || 'Failed to fetch data from Google Sheet Web App (Script Error).');
                 }
             } catch (e) {
-                showError(`การดึงข้อมูล Google Sheet ล้มเหลว: ${e.message}`);
+                // This catches network errors, including "Failed to fetch" due to CORS/Network/Incorrect URL
+                showError(`การดึงข้อมูล Google Sheet ล้มเหลว: ${e.message}. (อาจเกิดจาก URL ไม่ถูกต้อง/สิทธิ์การเข้าถึง/หรือไม่ได้ Deploy ใหม่ล่าสุด)`);
                 return { success: false, data: [] };
             } finally {
                 hideLoading();
@@ -629,8 +658,8 @@
          * @param {Object} data - The data object to send (including row index for update/delete)
          */
         async function postSheetData(action, data) {
-            if (!WEB_APP_URL || WEB_APP_URL.includes('xxxxxxxx')) {
-                 showError("กรุณาใส่ URL ของ Google Apps Script Web App ที่ถูกต้อง!");
+            if (!WEB_APP_URL || WEB_APP_URL.includes('AKfycbxSW5FYZPQG6K7_65-s6iFBtniJf4gxsBe9J61QlcuXXf6ffY8Ykx3SP54I6I7tDbfvRw')) {
+                 showError("กรุณาตรวจสอบว่า Google Apps Script ถูก Deploy เป็น Web App ด้วยสิทธิ์ 'Anyone' แล้ว และ URL ถูกต้อง");
                  return { success: false };
             }
 
@@ -680,10 +709,7 @@
                 populateSelects(result.data.uniqueModels || [], result.data.uniquePartNames || []);
             } else {
                 // If fetching fails, we still need to allow the user to proceed to add data
-                if (!WEB_APP_URL || !WEB_APP_URL.includes('xxxxxxxx')) {
-                     // We only show error if the URL is correct, otherwise the error is already shown above.
-                     // Don't show an error here if the failure is simply due to empty sheet data.
-                }
+                // The error is shown in fetchSheetData, so no need to repeat.
                 populateSelects([], []); // Still call this to ensure the button is enabled
             }
         }
@@ -812,9 +838,7 @@
                  renderConditionList(result.data.records || []);
              } else if (!silent) {
                  // Only show error if it's the main (non-silent) fetch
-                 if (!WEB_APP_URL || !WEB_APP_URL.includes('xxxxxxxx')) {
-                    showError('ไม่สามารถดึงข้อมูล Condition Machine ได้');
-                 }
+                 // Error is handled inside fetchSheetData now.
                  renderConditionList([]); // Clear table on error
              }
         }
@@ -937,7 +961,7 @@
             noDataRow.classList.add('hidden');
 
             conditions.forEach(data => {
-                // The 'id' in this case is the Row Index from the sheet
+                // The 'id' in this case is the Row Index from the sheet (starting from 2 for data rows)
                 const docId = data.id; 
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-gray-50 transition duration-100';
