@@ -1,1126 +1,504 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>บันทึก Condition Machine (Machine Condition Tracker)</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Sheet Data Manager</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
     <style>
-        /* Custom font and layout */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
+            background-color: #f7f7f7;
         }
-        .container-fluid {
-            min-height: 100vh;
+        /* Custom scrollbar style */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
         }
-        /* Custom table styling for better readability */
-        .data-table th, .data-table td {
-            padding: 10px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-            white-space: nowrap; /* Prevent wrapping in narrow columns */
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1; /* slate-300 */
+            border-radius: 4px;
         }
-        .data-table th {
-            background-color: #e8f0ff;
-            color: #1e40af;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background-color: #f1f5f9; /* slate-100 */
         }
-        .tts-button {
-            color: #10b981; /* green-500 */
-            border: 1px solid #10b981;
+        .form-input {
+            @apply w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150;
         }
-        .tts-button:hover {
-            background-color: #f0fdf4; /* green-50 */
+        .form-label {
+            @apply block text-sm font-medium text-gray-700 mb-1;
         }
     </style>
 </head>
-<body>
+<body class="min-h-screen">
 
-    <div id="app" class="container-fluid mx-auto p-4 md:p-8">
-
-        <!-- Header -->
-        <header class="mb-8">
-            <h1 class="text-3xl font-extrabold text-blue-800 mb-2">ระบบบันทึก Condition Machine</h1>
-            <p class="text-gray-600">จัดการและตรวจสอบเงื่อนไขการทำงานของเครื่องจักร</p>
-            <div id="loading-indicator" class="text-center py-4 hidden">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p class="text-sm text-blue-500 mt-2">กำลังโหลดข้อมูล...</p>
-            </div>
-            <div id="error-message" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mt-4 hidden" role="alert">
-                <p class="font-bold">เกิดข้อผิดพลาด</p>
-                <p id="error-text"></p>
-            </div>
-        </header>
+    <!-- Main Application Container -->
+    <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         
-        <!-- --- 1. Selection Screen (Initial Filter) --- -->
-        <div id="selection-screen" class="max-w-xl mx-auto bg-white p-8 rounded-xl shadow-2xl text-center mt-16">
-            <h2 class="text-2xl font-bold text-blue-700 mb-4">กรุณาเลือก Machine Condition ที่ต้องการดู</h2>
-            <p class="text-gray-500 mb-6">ข้อมูลที่แสดงจะถูกกรองตาม Model และ Part Name ที่คุณเลือก</p>
-            
-            <div class="space-y-4">
-                <div>
-                    <label for="model-select" class="block text-left text-sm font-medium text-gray-700 mb-1">Model เครื่องจักร:</label>
-                    <select id="model-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500" required>
-                        <option value="" disabled selected>-- เลือก Model --</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="partname-select" class="block text-left text-sm font-medium text-gray-700 mb-1">Part Name:</label>
-                    <select id="partname-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500" required>
-                        <option value="" disabled selected>-- เลือก Part Name --</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Removed 'disabled' from here, it's controlled by JS now -->
-            <button id="submit-selection-btn" class="mt-8 w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition duration-150 shadow-md">
-                แสดงข้อมูล (View Data)
-            </button>
-            <p id="selection-status" class="mt-3 text-sm text-red-500 hidden">กรุณาเลือกทั้ง Model และ Part Name หรือกด "แสดงข้อมูล" เพื่อเพิ่มข้อมูลเริ่มต้น</p>
+        <!-- Header -->
+        <header class="text-center py-6 bg-white rounded-xl shadow-lg mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl">
+                ⚙️ ตั้งค่าและจัดการข้อมูลเครื่องจักร (Sheet Manager)
+            </h1>
+            <p class="mt-2 text-sm text-gray-500">เชื่อมต่อกับ Google Sheet ผ่าน Web App URL ของคุณ</p>
+        </header>
 
+        <!-- Status Message Box -->
+        <div id="status-message" class="hidden fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl font-medium" role="alert"></div>
+        <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-30 z-40 hidden flex items-center justify-center">
+            <div class="flex flex-col items-center bg-white p-6 rounded-xl shadow-2xl">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="mt-3 text-gray-700 font-semibold">กำลังโหลด...</p>
+            </div>
         </div>
 
-        <!-- --- 2. Main App Screen (Hidden until selection) --- -->
-        <div id="main-app-screen" class="hidden">
-
-            <!-- Role Selector/Mode Switch -->
-            <div class="flex justify-between items-center mb-6 p-3 bg-white rounded-lg shadow-md">
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm font-medium text-gray-700">กำลังแสดง:</span>
-                    <span id="current-filter-display" class="font-bold text-blue-600 text-sm"></span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <button id="reset-filter-btn" class="px-3 py-1 bg-yellow-500 text-white rounded-full text-xs font-semibold hover:bg-yellow-600 transition duration-150">
-                        เปลี่ยนตัวกรอง
-                    </button>
-                    <span class="text-sm font-medium text-gray-700">โหมด:</span>
-                    <button id="mode-engineer" class="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200">Engineer</button>
-                    <button id="mode-view" class="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200">ผลิต/ซ่อมบำรุง</button>
-                    <span id="user-id-display" class="text-xs text-gray-500 bg-gray-100 p-2 rounded-lg"></span>
-                </div>
+        <!-- Filter Panel & Add Button -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            
+            <!-- Model Filter -->
+            <div>
+                <label for="filter-model" class="form-label">Model:</label>
+                <select id="filter-model" class="form-input">
+                    <option value="" disabled selected>เลือก Model</option>
+                </select>
+            </div>
+            
+            <!-- Part Name Filter -->
+            <div>
+                <label for="filter-partName" class="form-label">Part Name:</label>
+                <select id="filter-partName" class="form-input">
+                    <option value="" disabled selected>เลือก Part Name</option>
+                </select>
             </div>
 
-            <!-- Engineer Mode: Data Entry Form -->
-            <div id="engineer-mode" class="hidden">
-                <h2 class="text-2xl font-bold text-blue-700 mb-4">บันทึก/แก้ไข Condition Machine</h2>
-                
-                <!-- LLM Analysis Output -->
-                <div id="analysis-output-container" class="mb-6">
-                    <div id="analysis-output" class="mt-4 p-4 bg-purple-50 rounded-xl border-l-4 border-purple-500 text-gray-800 shadow-md hidden">
-                        <p class="font-bold mb-2 text-purple-800">✨ ผลการวิเคราะห์โดย AI:</p>
-                        <div id="analysis-text" class="prose max-w-none text-sm"></div>
-                    </div>
-                    <div id="analysis-loading" class="text-center py-4 hidden">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500 mx-auto"></div>
-                        <p class="text-sm text-purple-500 mt-2">กำลังวิเคราะห์ข้อมูล...</p>
-                    </div>
-                </div>
+            <!-- Action Buttons -->
+            <div class="col-span-1 md:col-span-2 flex space-x-3 mt-2 md:mt-0">
+                <button onclick="loadFilteredRecords()" id="fetch-button"
+                    class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 shadow-md flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.836 2l1.54 1.54a1.88 1.88 0 010 2.652l-1.54 1.54M4 13h16m0-4h16m-6 0v5m-8-5v5m-4-5v5"></path></svg>
+                    ดึงข้อมูล
+                </button>
+                <button onclick="openModal()"
+                    class="w-full md:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition duration-150 shadow-md flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    เพิ่มข้อมูลใหม่
+                </button>
+            </div>
+        </div>
 
-                <form id="condition-form" class="bg-white p-6 rounded-xl shadow-lg grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Data Table -->
+        <div class="bg-white p-6 rounded-xl shadow-lg overflow-x-auto custom-scrollbar">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">ตารางข้อมูลการตั้งค่า</h2>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead>
+                    <tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                        <th class="px-3 py-3 border-r">Model / Part Name</th>
+                        <th class="px-3 py-3 border-r">กระบวนการ/เครื่องจักร</th>
+                        <th class="px-3 py-3 border-r">การตั้งค่าหลัก</th>
+                        <th class="px-3 py-3 border-r">แรงตึงด้าย</th>
+                        <th class="px-3 py-3 border-r">แรงกดตีนผี / Stopper</th>
+                        <th class="px-3 py-3">ความเร็ว/ทักษะ</th>
+                        <th class="px-3 py-3 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="data-table-body" class="divide-y divide-gray-200">
+                    <tr><td colspan="7" class="py-4 text-center text-gray-500">กรุณาเลือก Model และ Part Name แล้วกด "ดึงข้อมูล"</td></tr>
+                </tbody>
+            </table>
+        </div>
 
-                    <!-- Hidden field for document ID during editing. For Sheet, this is the Row Index -->
-                    <input type="hidden" id="doc-id">
-                    
-                    <!-- Pre-filled Filtered Fields (Now visible and Read-only for clarity) -->
-                    <div class="col-span-1">
-                        <label for="Model" class="block text-sm font-medium text-gray-700">Model เครื่องจักร</label>
-                        <input type="text" id="Model" value="" required readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500 bg-gray-100 cursor-not-allowed">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="PartName" class="block text-sm font-medium text-gray-700">Part Name</label>
-                        <input type="text" id="PartName" value="" required readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500 bg-gray-100 cursor-not-allowed">
-                    </div>
-                    <!-- Empty column for spacing/visual break -->
-                    <div class="col-span-1 hidden lg:block"></div>
+    </div>
 
-                    <!-- Input Fields (Start from Process No. as Model/PartName are now displayed above) -->
-                    <div class="col-span-1">
-                        <label for="ProcessNo" class="block text-sm font-medium text-gray-700">Process No.</label>
-                        <input type="text" id="ProcessNo" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="MachineNo" class="block text-sm font-medium text-gray-700">Machine No.</label>
-                        <input type="text" id="MachineNo" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="ProcessName" class="block text-sm font-medium text-gray-700">ชื่อกระบวนการ</label>
-                        <input type="text" id="ProcessName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="ThreadNo" class="block text-sm font-medium text-gray-700">เบอร์ด้าย</label>
-                        <input type="text" id="ThreadNo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class-onchange="col-span-1">
-                        <label for="NeedleNo" class="block text-sm font-medium text-gray-700">เบอร์เข็ม</label>
-                        <input type="text" id="NeedleNo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="StitchLength" class="block text-sm font-medium text-gray-700">ฝีเข็ม</label>
-                        <input type="text" id="StitchLength" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="UpperTension" class="block text-sm font-medium text-gray-700">แรงตึงด้ายบน (N) STD + 3</label>
-                        <input type="number" step="0.1" id="UpperTension" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="LowerTension" class="block text-sm font-medium text-gray-700">แรงตึงด้ายล่าง (N) STD + 3</label>
-                        <input type="number" step="0.1" id="LowerTension" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="OuterFootPressure" class="block text-sm font-medium text-gray-700">แรงกดตีนผีนอก (Kg) STD + 1</label>
-                        <input type="number" step="0.1" id="OuterFootPressure" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="InnerFootPressure" class="block text-sm font-medium text-gray-700">แรงกดตีนผีใน (Kg) STD + 1</label>
-                        <input type="number" step="0.1" id="InnerFootPressure" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="StopperDistance" class="block text-sm font-medium text-gray-700">ระยะ stopper ตะเข็บ (mm)</label>
-                        <input type="number" step="0.1" id="StopperDistance" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="AirPressure" class="block text-sm font-medium text-gray-700">แรงลม (bar)</label>
-                        <input type="number" step="0.1" id="AirPressure" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="SpeedRPM" class="block text-sm font-medium text-gray-700">ความเร็วรอบ (rpm)</label>
-                        <input type="number" id="SpeedRPM" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div class="col-span-1">
-                        <label for="ManSkill" class="block text-sm font-medium text-gray-700">Man skill ≥</label>
-                        <input type="number" id="ManSkill" step="0.1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
+    <!-- Modal Form (Hidden by default) -->
+    <div id="data-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 hidden items-center justify-center p-4" onclick="if(event.target.id === 'data-modal') closeModal()">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar" onclick="event.stopPropagation()">
+            <div class="p-6">
+                <h3 id="modal-title" class="text-2xl font-bold text-gray-900 mb-4">เพิ่มข้อมูลใหม่</h3>
+                <form id="data-form" onsubmit="handleSave(event)">
+                    <!-- Hidden input for RowIndex (for updates) -->
+                    <input type="hidden" id="RowIndex" name="RowIndex">
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Group 1: Identifiers -->
+                        <div class="md:col-span-1 space-y-4">
+                            <h4 class="font-semibold text-blue-600 border-b pb-1 mb-2">ข้อมูลระบุตัวตน</h4>
+                            <div><label for="Model" class="form-label">Model <span class="text-red-500">*</span></label><input type="text" id="Model" name="Model" class="form-input" required></div>
+                            <div><label for="PartName" class="form-label">Part Name <span class="text-red-500">*</span></label><input type="text" id="PartName" name="PartName" class="form-input" required></div>
+                            <div><label for="ProcessNo" class="form-label">Process No.</label><input type="text" id="ProcessNo" name="ProcessNo" class="form-input"></div>
+                            <div><label for="MachineNo" class="form-label">Machine No.</label><input type="text" id="MachineNo" name="MachineNo" class="form-input"></div>
+                            <div><label for="ProcessName" class="form-label">ชื่อกระบวนการ</label><input type="text" id="ProcessName" name="ProcessName" class="form-input"></div>
+                        </div>
+
+                        <!-- Group 2: Stitch & Tension -->
+                        <div class="md:col-span-1 space-y-4">
+                            <h4 class="font-semibold text-blue-600 border-b pb-1 mb-2">การตั้งค่าด้าย/เข็ม/แรงตึง</h4>
+                            <div><label for="ThreadNo" class="form-label">เบอร์ด้าย</label><input type="text" id="ThreadNo" name="ThreadNo" class="form-input"></div>
+                            <div><label for="NeedleNo" class="form-label">เบอร์เข็ม</label><input type="text" id="NeedleNo" name="NeedleNo" class="form-input"></div>
+                            <div><label for="StitchLength" class="form-label">ฝีเข็ม</label><input type="text" id="StitchLength" name="StitchLength" class="form-input"></div>
+                            <div><label for="UpperTension" class="form-label">แรงตึงด้ายบน (N) STD + 3</label><input type="text" id="UpperTension" name="UpperTension" class="form-input"></div>
+                            <div><label for="LowerTension" class="form-label">แรงตึงด้ายล่าง (N) STD + 3</label><input type="text" id="LowerTension" name="LowerTension" class="form-input"></div>
+                        </div>
+
+                        <!-- Group 3: Pressure & Others -->
+                        <div class="md:col-span-1 space-y-4">
+                            <h4 class="font-semibold text-blue-600 border-b pb-1 mb-2">การตั้งค่าแรงกด/อื่นๆ</h4>
+                            <div><label for="OuterFootPressure" class="form-label">แรงกดตีนผีนอก (Kg) STD + 1</label><input type="text" id="OuterFootPressure" name="OuterFootPressure" class="form-input"></div>
+                            <div><label for="InnerFootPressure" class="form-label">แรงกดตีนผีใน (Kg) STD + 1</label><input type="text" id="InnerFootPressure" name="InnerFootPressure" class="form-input"></div>
+                            <div><label for="StopperDistance" class="form-label">ระยะ stopper ตะเข็บ (mm)</label><input type="text" id="StopperDistance" name="StopperDistance" class="form-input"></div>
+                            <div><label for="AirPressure" class="form-label">แรงลม (bar)</label><input type="text" id="AirPressure" name="AirPressure" class="form-input"></div>
+                            <div><label for="SpeedRPM" class="form-label">ความเร็วรอบ (rpm)</label><input type="text" id="SpeedRPM" name="SpeedRPM" class="form-input"></div>
+                            <div><label for="ManSkill" class="form-label">Man skill ≥</label><input type="text" id="ManSkill" name="ManSkill" class="form-input"></div>
+                        </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="col-span-full flex justify-end space-x-4 pt-4">
-                        <button type="button" id="generate-analysis-btn" class="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition duration-150 shadow-md">
-                            ✨ วิเคราะห์ Condition & เสนอแนะ
+                    <!-- Footer Buttons -->
+                    <div class="mt-8 pt-4 border-t flex justify-end space-x-3">
+                        <button type="button" onclick="closeModal()"
+                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition duration-150">
+                            ยกเลิก
                         </button>
-                        <button type="button" id="clear-form-btn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition duration-150">ยกเลิก/เคลียร์ฟอร์ม</button>
-                        <button type="submit" id="submit-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition duration-150 shadow-md">บันทึกข้อมูล</button>
+                        <button type="submit" id="save-button"
+                            class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 shadow-md flex items-center">
+                            บันทึกข้อมูล
+                        </button>
                     </div>
                 </form>
-            </div>
-
-            <!-- View Mode: Data Table -->
-            <div id="view-mode">
-                <h2 class="text-2xl font-bold text-blue-700 mb-4">ตาราง Condition Machine</h2>
-
-                <div class="overflow-x-auto bg-white rounded-xl shadow-lg">
-                    <table class="min-w-full divide-y divide-gray-200 data-table">
-                        <thead>
-                            <tr>
-                                <th class="min-w-[100px]">Model / Part Name</th>
-                                <th>Process No.</th>
-                                <th>Machine No.</th>
-                                <th class="min-w-[120px]">ชื่อกระบวนการ</th>
-                                <th>เบอร์ด้าย</th>
-                                <th>เบอร์เข็ม</th>
-                                <th>ฝีเข็ม</th>
-                                <th>แรงตึงด้ายบน (N)</th>
-                                <th>แรงตึงด้ายล่าง (N)</th>
-                                <th>แรงกดตีนผีนอก (Kg)</th>
-                                <th>แรงกดตีนผีใน (Kg)</th>
-                                <th>ระยะ Stopper (mm)</th>
-                                <th>แรงลม (bar)</th>
-                                <th>ความเร็วรอบ (rpm)</th>
-                                <th>Man Skill ≥</th>
-                                <th id="table-actions-header" class="hidden">แก้ไข/ลบ</th>
-                                <th>🔊 TTS</th>
-                            </tr>
-                        </thead>
-                        <tbody id="condition-list" class="divide-y divide-gray-100">
-                            <!-- Data will be injected here by JavaScript -->
-                            <tr id="no-data-row"><td colspan="17" class="text-center text-gray-500 py-4">ไม่มีข้อมูล Condition Machine สำหรับตัวกรองนี้</td></tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
         </div>
     </div>
 
-    <!-- Script uses Google Sheet Web App endpoint instead of Firebase -->
-    <script type="module">
+    <script>
+        // --- Configuration ---
+        // URL ที่ได้รับการอัปเดตแล้ว:
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxKR-68vG9TWTLYEheVy1Z80ph2Z3f90B5rzk8fqRHf53smwtEjKssBCVR0ZapOT_7dtA/exec';
         
-        // --- GOOGLE SHEET CONFIGURATION (REPLACING FIREBASE) ---
-        const SHEET_ID = '1hRZce6aqXWAx7XPN33n-QunQPJE0B1a4r898WoZKQsT';
-        
-        // !!! URL ถูกอัปเดตแล้วตามที่คุณแจ้ง (นี่คือ Example URL) !!!
-        // NOTE: URL นี้เป็นรูปแบบ ID ของ Script ไม่ใช่ URL ที่ใช้สำหรับ fetch() โดยตรง
-        // แต่ถ้าคุณได้ Deploy เป็น Web App แล้ว ผมจะใช้ URL ที่สมมติว่าถูกต้องก่อนหน้านี้
-        // พร้อมแทนที่ด้วย ID ล่าสุดของคุณ (หากมี) เพื่อให้ระบบทำงานต่อได้
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyJEYrROsyoZWypCKQqMsk7sn8PfS4XNDmAabuECcuiVtXDQUmUB_HLL4YosfaJ4c8ZIg/exec'; // URL เดิมที่สมมติว่าใช้ได้
-        
-        // ** เนื่องจาก URL ที่คุณแจ้งล่าสุดเป็นรูปแบบ ID ของ Script (AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw)
-        // ** ผมจะใช้ ID นี้มาสร้าง URL ในรูปแบบที่ควรจะเป็นสำหรับการ Deploy ล่าสุด
-        const SCRIPT_ID = 'AKfycbyJEYrROsyoZWypCKQqMsk7sn8PfS4XNDmAabuECcuiVtXDQUmUB_HLL4YosfaJ4c8ZIg'; // ใช้ ID นี้เป็นตัวอย่าง
-        // const SCRIPT_ID = 'AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw'; // ID ล่าสุดที่ไม่ได้เป็น full URL
-        // หากต้องการให้โค้ดทำงานได้จริง คุณต้องแทนที่ WEB_APP_URL ด้านล่างด้วย Full URL ที่ได้จากการ Publish Web App ล่าสุด
+        // Keys must match KEY_MAP in google_app_script.gs
+        const FIELD_KEYS = [
+            'Model', 'PartName', 'ProcessNo', 'MachineNo', 'ProcessName', 
+            'ThreadNo', 'NeedleNo', 'StitchLength', 'UpperTension', 'LowerTension', 
+            'OuterFootPressure', 'InnerFootPressure', 'StopperDistance', 'AirPressure', 
+            'SpeedRPM', 'ManSkill'
+        ];
 
-        // ** การแก้ไขที่สำคัญ: แทนที่ WEB_APP_URL ด้วย Full URL ที่ได้จากการ Deploy Google Apps Script ล่าสุด **
-        // เนื่องจาก "AKfyc..." เป็นแค่ ID แต่ไม่ใช่ URL ที่ใช้ fetch ได้โดยตรง ผมจะใช้รูปแบบ URL เต็ม
-        const WEB_APP_URL_FULL = 'https://script.google.com/macros/s/AKfycbyJEYrROsyoZWypCKQqMsk7sn8PfS4XNDmAabuECcuiVtXDQUmUB_HLL4YosfaJ4c8ZIg/exec'; 
-        
-        // ใช้ URL ตัวเต็ม (Full URL) ที่ได้จากการ Deploy เป็น Web App ล่าสุด
-        const WEB_APP_URL = WEB_APP_URL_FULL; 
-        
-        const POLLING_INTERVAL = 10000; // Poll every 10 seconds for updates (simulate real-time)
-
-        // --- GEMINI API Constants ---
-        const API_KEY = ""; 
-        const LLM_MODEL = "gemini-2.5-flash-preview-09-2025";
-        const TTS_MODEL = "gemini-2.5-flash-preview-tts";
-        const BASE_API_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-        const TTS_VOICE = "Kore"; 
-
-        // Global variables (Simplified from Firebase version)
-        let userId = 'sheet_user_1'; // Dummy user ID for Sheet
-        let isAuthReady = false;
-        let pollingTimer = null; // To hold the polling timer
-
-        // --- State for Filtering ---
-        let selectedModel = null;
-        let selectedPartName = null;
-        
-        // UI Elements
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const errorMessage = document.getElementById('error-message');
-        const errorText = document.getElementById('error-text');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const engineerModeDiv = document.getElementById('engineer-mode');
-        const viewModeDiv = document.getElementById('view-mode');
-        const conditionForm = document.getElementById('condition-form');
-        const conditionList = document.getElementById('condition-list');
-        const submitBtn = document.getElementById('submit-btn');
-        const tableActionsHeader = document.getElementById('table-actions-header');
-        const noDataRow = document.getElementById('no-data-row');
-        const analysisOutputContainer = document.getElementById('analysis-output');
-        const analysisText = document.getElementById('analysis-text');
-        const analysisLoading = document.getElementById('analysis-loading');
-        const generateAnalysisBtn = document.getElementById('generate-analysis-btn');
-
-        // New UI Elements for Filtering
-        const selectionScreen = document.getElementById('selection-screen');
-        const mainAppScreen = document.getElementById('main-app-screen');
-        const modelSelect = document.getElementById('model-select');
-        const partNameSelect = document.getElementById('partname-select');
-        const submitSelectionBtn = document.getElementById('submit-selection-btn');
-        const currentFilterDisplay = document.getElementById('current-filter-display');
-        const resetFilterBtn = document.getElementById('reset-filter-btn');
-        
-        // Form Fields (now visible)
-        const ModelInput = document.getElementById('Model');
-        const PartNameInput = document.getElementById('PartName');
-
-
-        // State
-        let currentMode = 'view'; // Default mode is view
-
-        // Field definitions for the form (MUST MATCH THE ORDER IN google_app_script.gs)
-        const fieldMapping = {
-            Model: 'Model', PartName: 'Part Name', ProcessNo: 'Process No.', MachineNo: 'Machine No.',
-            ProcessName: 'ชื่อกระบวนการ', ThreadNo: 'เบอร์ด้าย', NeedleNo: 'เบอร์เข็ม', StitchLength: 'ฝีเข็ม',
-            UpperTension: 'แรงตึงด้ายบน (N) STD + 3', LowerTension: 'แรงตึงด้ายล่าง (N) STD + 3',
-            OuterFootPressure: 'แรงกดตีนผีนอก (Kg) STD + 1', InnerFootPressure: 'แรงกดตีนผีใน (Kg) STD + 1',
-            StopperDistance: 'ระยะ stopper ตะเข็บ (mm)', AirPressure: 'แรงลม (bar)', SpeedRPM: 'ความเร็วรอบ (rpm)',
-            ManSkill: 'Man skill ≥'
+        // Thai labels for display (must match HEADERS in GS for consistency)
+        const FIELD_LABELS = {
+            "Model": "Model",
+            "PartName": "Part Name",
+            "ProcessNo": "Process No.",
+            "MachineNo": "Machine No.",
+            "ProcessName": "ชื่อกระบวนการ",
+            "ThreadNo": "เบอร์ด้าย",
+            "NeedleNo": "เบอร์เข็ม",
+            "StitchLength": "ฝีเข็ม",
+            "UpperTension": "แรงตึงด้ายบน (N) STD + 3",
+            "LowerTension": "แรงตึงด้ายล่าง (N) STD + 3",
+            "OuterFootPressure": "แรงกดตีนผีนอก (Kg) STD + 1",
+            "InnerFootPressure": "แรงกดตีนผีใน (Kg) STD + 1",
+            "StopperDistance": "ระยะ stopper ตะเข็บ (mm)",
+            "AirPressure": "แรงลม (bar)",
+            "SpeedRPM": "ความเร็วรอบ (rpm)",
+            "ManSkill": "Man skill ≥"
         };
-        const fields = Object.keys(fieldMapping);
-
+        
+        // --- State Management ---
+        let uniqueModels = [];
+        let uniquePartNames = [];
 
         // --- Utility Functions ---
 
-        function showLoading() {
-            loadingIndicator.classList.remove('hidden');
-        }
+        /** Shows a temporary, styled alert message. */
+        function showAlert(message, type = 'success') {
+            const el = document.getElementById('status-message');
+            el.textContent = message;
+            el.classList.remove('hidden', 'bg-red-500', 'bg-green-500', 'opacity-0');
+            el.classList.add('opacity-100');
 
-        function hideLoading() {
-            loadingIndicator.classList.add('hidden');
-        }
-
-        function showError(message) {
-            errorText.textContent = message;
-            errorMessage.classList.remove('hidden');
-            console.error('Application Error:', message);
-        }
-
-        function showStatusMessage(message, isError = false) {
-            const statusDiv = document.createElement('div');
-            statusDiv.className = `fixed top-4 right-4 p-4 rounded-lg shadow-xl text-white z-50 transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
-            statusDiv.textContent = message;
-            document.body.appendChild(statusDiv);
+            if (type === 'error') {
+                el.classList.add('bg-red-500', 'text-white');
+            } else {
+                el.classList.add('bg-green-500', 'text-white');
+            }
+            
+            el.classList.add('transition-opacity', 'duration-300');
             setTimeout(() => {
-                statusDiv.classList.add('opacity-0');
-                statusDiv.addEventListener('transitionend', () => statusDiv.remove());
-            }, 3000);
+                el.classList.remove('opacity-100');
+                el.classList.add('opacity-0');
+                setTimeout(() => {
+                    el.classList.add('hidden');
+                }, 300);
+            }, 5000);
+        }
+
+        /** Shows/hides the loading overlay. */
+        function toggleLoading(show) {
+            document.getElementById('loading-overlay').classList.toggle('hidden', !show);
         }
         
-        function confirmAction(message) {
-             // Replaced window.confirm with a simpler function for this environment
-             return true; // Assume confirmation for simplicity in this context
-        }
+        /** Generic function to call the Google Apps Script Web App */
+        async function fetchData(action, params = {}, method = 'GET', body = null) {
+            const url = new URL(WEB_APP_URL);
+            url.searchParams.set('action', action);
 
-        // --- Fetch with Exponential Backoff (for Gemini API) ---
-        async function fetchWithRetry(url, options, maxRetries = 5) {
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (response.status === 429 || response.status >= 500) {
-                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        continue;
-                    }
-                    return response;
-                } catch (error) {
-                    console.error("Fetch attempt failed:", error);
-                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-            throw new Error("API request failed after multiple retries.");
-        }
-
-
-        // --- Gemini API: Analysis Feature (Unchanged) ---
-
-        async function generateAnalysis() {
-            analysisOutputContainer.classList.add('hidden');
-            analysisLoading.classList.remove('hidden');
-            analysisText.innerHTML = '';
-            
-            const data = {};
-            let promptDetails = "ข้อมูล Condition Machine ที่ป้อนเข้า:\n";
-            let missingRequiredField = false;
-
-            // Collect all fields, including the locked Model and PartName
-            fields.forEach(field => {
-                const element = document.getElementById(field);
-                if (element) {
-                    data[field] = element.value.trim();
-                    if (element.required && !data[field]) {
-                        // Check required fields, excluding Model/PartName which are pre-set
-                        if (field !== 'Model' && field !== 'PartName') {
-                           missingRequiredField = true;
-                        }
-                    }
-                    if (data[field]) {
-                         promptDetails += `- ${fieldMapping[field]}: ${data[field]}\n`;
-                    }
-                }
-            });
-
-            if (missingRequiredField) {
-                 analysisLoading.classList.add('hidden');
-                 showError("กรุณากรอกข้อมูลที่จำเป็น (Process No., Machine No., ชื่อกระบวนการ) ให้ครบถ้วนก่อนทำการวิเคราะห์");
-                 return;
+            // Add GET parameters
+            if (method === 'GET') {
+                Object.keys(params).forEach(key => url.searchParams.set(key, params[key]));
             }
 
-            const systemPrompt = `คุณคือวิศวกรซ่อมบำรุงอาวุโส (Senior Maintenance Engineer) ระดับโลก ให้วิเคราะห์ข้อมูล Condition Machine ที่ได้รับในเชิงลึก โดยเปรียบเทียบค่าที่ป้อนเข้ามากับค่ามาตรฐานที่ระบุไว้ (STD+3, STD+1) และให้ข้อเสนอแนะที่ชัดเจนและปฏิบัติได้จริงในด้าน: 1. สถานะโดยรวมของเครื่องจักร (ปกติ, ต้องปรับ, น่าเป็นห่วง) 2. คำแนะนำในการปรับตั้งค่า (เช่น ให้ปรับแรงตึงด้าย, แรงกดตีนผี) 3. คำแนะนำด้านการซ่อมบำรุงหรือการตรวจสอบเพิ่มเติม หากพบค่าที่ผิดปกติมากเกินไป ให้สรุปผลเป็นข้อความที่กระชับและเป็นมิตรกับผู้ใช้งานฝ่ายผลิต/ซ่อมบำรุง ตอบกลับเป็นภาษาไทยเท่านั้น โดยใช้รูปแบบ Markdown (เช่น ใช้ **...** สำหรับเน้นข้อความ)`;
-            const userQuery = `โปรดวิเคราะห์ข้อมูล Condition Machine ชุดนี้และให้คำแนะนำ:\n${promptDetails}`;
-
-            const apiUrl = `${BASE_API_URL}/${LLM_MODEL}:generateContent?key=${API_KEY}`;
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-            };
-
-            try {
-                const response = await fetchWithRetry(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const result = await response.json();
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (text) {
-                    analysisText.innerHTML = renderMarkdown(text);
-                    analysisOutputContainer.classList.remove('hidden');
-                } else {
-                    analysisText.textContent = "ไม่สามารถวิเคราะห์ข้อมูลได้ กรุณาลองใหม่อีกครั้ง";
-                    analysisOutputContainer.classList.remove('hidden');
-                }
-            } catch (e) {
-                showError(`การเรียกใช้ Gemini API ล้มเหลว: ${e.message}`);
-            } finally {
-                analysisLoading.classList.add('hidden');
-            }
-        }
-
-        // Simple Markdown renderer (handles bold and newlines)
-        function renderMarkdown(text) {
-            let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
-            html = html.replace(/\n/g, '<br>'); // Newlines
-            return html;
-        }
-
-
-        // --- Gemini API: TTS Feature (Unchanged) ---
-
-        // Utility for Base64 to ArrayBuffer
-        function base64ToArrayBuffer(base64) {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        // Utility for PCM to WAV conversion (Standard 16-bit PCM WAV header)
-        function pcmToWav(pcmData, sampleRate) {
-            const buffer = new ArrayBuffer(44 + pcmData.byteLength);
-            const view = new DataView(buffer);
-            const channelCount = 1;
-            const bytesPerSample = 2; // 16-bit PCM
-            const byteRate = sampleRate * channelCount * bytesPerSample;
-            const blockAlign = channelCount * bytesPerSample;
-
-            /* RIFF identifier */
-            view.setUint32(0, 0x52494646, false); // "RIFF"
-            /* file length */
-            view.setUint32(4, 36 + pcmData.byteLength, true);
-            /* RIFF type */
-            view.setUint32(8, 0x57415645, false); // "WAVE"
-            /* format chunk identifier */
-            view.setUint32(12, 0x666d7420, false); // "fmt "
-            /* format chunk length */
-            view.setUint32(16, 16, true);
-            /* sample format (raw) */
-            view.setUint16(20, 1, true); // 1 = PCM
-            /* channel count */
-            view.setUint16(22, channelCount, true);
-            /* sample rate */
-            view.setUint32(24, sampleRate, true);
-            /* byte rate (sample rate * block align) */
-            view.setUint32(28, byteRate, true);
-            /* block align (channel count * bytes per sample) */
-            view.setUint16(32, blockAlign, true);
-            /* bits per sample */
-            view.setUint16(34, bytesPerSample * 8, true);
-            /* data chunk identifier */
-            view.setUint32(36, 0x64617461, false); // "data"
-            /* data chunk length */
-            view.setUint32(40, pcmData.byteLength, true);
-
-            // Copy PCM data
-            const offset = 44;
-            for (let i = 0; i < pcmData.length; i++) {
-                view.setInt16(offset + i * 2, pcmData[i], true);
-            }
-
-            return new Blob([view], { type: 'audio/wav' });
-        }
-
-
-        window.speakCondition = async (data, buttonElement) => {
-            buttonElement.disabled = true;
-            buttonElement.innerHTML = `<svg class="animate-spin h-5 w-5 text-green-500 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-            
-            // Construct Thai prompt focusing on key parameters
-            const textToSpeak = `Machine ${data.MachineNo || 'ไม่ระบุ'}, Model ${data.Model || 'ไม่ระบุ'} การตั้งค่าปัจจุบัน: Process ${data.ProcessName || 'ไม่ระบุ'}. แรงตึงด้ายบน ${data.UpperTension || '-'} นิวตัน. แรงตึงด้ายล่าง ${data.LowerTension || '-'} นิวตัน. แรงกดตีนผีนอก ${data.OuterFootPressure || '-'} กิโลกรัม. แรงกดตีนผีใน ${data.InnerFootPressure || '-'} กิโลกรัม. ความเร็วรอบ ${data.SpeedRPM || '-'} รอบต่อนาที.`;
-
-            const apiUrl = `${BASE_API_URL}/${TTS_MODEL}:generateContent?key=${API_KEY}`;
-            const payload = {
-                contents: [{ parts: [{ text: textToSpeak }] }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: { prebuiltVoiceConfig: { voiceName: TTS_VOICE } }
-                    }
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
                 },
             };
 
-            try {
-                const response = await fetchWithRetry(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
-                    
-                    const pcmDataBuffer = base64ToArrayBuffer(audioData);
-                    // API returns signed PCM16 audio data.
-                    const pcm16 = new Int16Array(pcmDataBuffer);
-                    const wavBlob = pcmToWav(pcm16, sampleRate);
-                    const audioUrl = URL.createObjectURL(wavBlob);
-                    
-                    const audio = new Audio(audioUrl);
-                    audio.onended = () => {
-                        buttonElement.disabled = false;
-                        buttonElement.innerHTML = `🔊 ฟัง`;
-                    };
-                    audio.play();
-
-                } else {
-                    throw new Error("Invalid audio response structure from TTS API.");
-                }
-            } catch (e) {
-                showError(`TTS ล้มเหลว: ${e.message}`);
-                buttonElement.disabled = false;
-                buttonElement.innerHTML = `🔊 ฟัง`;
-            }
-        }
-
-
-        // --- App Initialization (Skipping Firebase) ---
-
-        function initializeApp() {
-            showLoading();
-            // Simulate readiness since we are skipping Firebase auth
-            userIdDisplay.textContent = `Data Source: Google Sheet`;
-            isAuthReady = true;
-            
-            // Load filter options immediately 
-            fetchUniqueCombinations(); 
-            hideLoading();
-        }
-
-        // --- Data Management (Google Sheets via Web App) ---
-
-        /**
-         * Fetches data from the Google Sheet Web App endpoint.
-         * @param {string} action - 'read_unique' or 'read_filtered'
-         * @param {string} model - The selected machine model (optional)
-         * @param {string} partName - The selected part name (optional)
-         */
-        async function fetchSheetData(action, model = '', partName = '') {
-            // Check for the placeholder URL, which is the source of the reported error
-            // NOTE: เราจะเชื่อว่า URL ล่าสุดที่ได้ Deploy แล้วถูกใช้งานอยู่ใน WEB_APP_URL
-            if (!WEB_APP_URL || WEB_APP_URL.includes('AKfycbxSW5FYZPQG6K7_65-s6iFBtniJf4gxsBe9J61QlcuXXf6ffY8Ykx3SP54I6I7tDbfvRw') /* ตรวจสอบ URL เดิม */) {
-                 // ถ้า URL ยังเป็น URL เดิม อาจจะมีการ Deploy ซ้ำซ้อน
-                 // เราจะใช้ URL ที่คุณให้มาล่าสุด: AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw
-                 // แต่ในโค้ด HTML ไม่ควรจะรู้ URL ใหม่นี้เอง เพราะต้องมีการ Deploy ใหม่ทุกครั้ง
-                 // แต่เราจะใช้ตัวแปรที่ถูกอัปเดตไปแล้ว
-                 if (action === 'read_unique') {
-                     // ถ้าการเรียกครั้งแรกมีปัญหา ให้แสดง Error ที่ชัดเจน
-                     showError("กรุณาตรวจสอบว่า Google Apps Script ถูก Deploy เป็น Web App ด้วยสิทธิ์ 'Anyone' แล้ว และ URL ถูกต้อง");
-                 }
-                 return { success: false, data: [] };
+            if (method === 'POST' && body) {
+                options.body = JSON.stringify({ action, data: body });
             }
 
-            const url = new URL(WEB_APP_URL);
-            url.searchParams.append('action', action);
-            if (model) url.searchParams.append('model', model);
-            if (partName) url.searchParams.append('partName', partName);
+            toggleLoading(true);
             
-            showLoading();
-
             try {
-                // ** สำคัญมาก: สำหรับ Apps Script GET requests, the CORS policy may cause "Failed to fetch" if permissions are wrong **
-                const response = await fetch(url.toString(), {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
-                    // mode: 'no-cors' is often needed for Apps Script GET, but we assume
-                    // the deployed Apps Script is configured for wide access.
-                });
-                
-                // If fetch fails before reaching the network, response.ok will be false. 
-                // However, 'Failed to fetch' often means a CORS or network issue.
-                if (!response.ok) {
-                    throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-                }
-                
+                const response = await fetch(url.toString(), options);
                 const result = await response.json();
                 
-                if (result.success) {
-                    return result;
-                } else {
-                    // This error comes from the Apps Script code (doGet/doPost)
-                    throw new Error(result.error || 'Failed to fetch data from Google Sheet Web App (Script Error).');
+                if (!result.success) {
+                    throw new Error(result.error || `Action failed: ${action}`);
                 }
-            } catch (e) {
-                // This catches network errors, including "Failed to fetch" due to CORS/Network/Incorrect URL
-                showError(`การดึงข้อมูล Google Sheet ล้มเหลว: ${e.message}. (อาจเกิดจาก URL ไม่ถูกต้อง/สิทธิ์การเข้าถึง/หรือไม่ได้ Deploy ใหม่ล่าสุด)`);
-                return { success: false, data: [] };
+                return result;
+            } catch (error) {
+                console.error(`Error in ${action}:`, error);
+                showAlert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}`, 'error');
+                return { success: false, error: error.message };
             } finally {
-                hideLoading();
+                toggleLoading(false);
             }
         }
 
-        /**
-         * Sends data (save/update/delete) to the Google Sheet Web App endpoint via POST.
-         * @param {string} action - 'save' or 'delete'
-         * @param {Object} data - The data object to send (including row index for update/delete)
-         */
-        async function postSheetData(action, data) {
-            if (!WEB_APP_URL || WEB_APP_URL.includes('AKfycbxSW5FYZPQG6K7_65-s6iFBtniJf4gxsBe9J61QlcuXXf6ffY8Ykx3SP54I6I7tDbfvRw')) {
-                 showError("กรุณาตรวจสอบว่า Google Apps Script ถูก Deploy เป็น Web App ด้วยสิทธิ์ 'Anyone' แล้ว และ URL ถูกต้อง");
-                 return { success: false };
-            }
+        // --- Modal/Form Functions ---
 
-            showLoading();
-
-            try {
-                const response = await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action, data }),
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    return result;
-                } else {
-                    throw new Error(result.error || 'Failed to post data to Google Sheet Web App.');
-                }
-            } catch (e) {
-                showError('การบันทึกข้อมูล Google Sheet ล้มเหลว อาจเกิดจากปัญหาการเชื่อมต่อหรือสิทธิ์การเข้าถึง');
-                return { success: false };
-            } finally {
-                hideLoading();
-            }
+        /** Clears the form and closes the modal. */
+        function closeModal() {
+            document.getElementById('data-modal').classList.add('hidden');
+            document.getElementById('data-modal').classList.remove('flex');
+            document.getElementById('data-form').reset();
+            // Clear hidden RowIndex
+            document.getElementById('RowIndex').value = '';
         }
 
-
-        // --- Filtering and Selection Logic ---
-
-        /**
-         * Fetches all unique Model and PartName combinations to populate the filter selectors.
-         */
-        async function fetchUniqueCombinations() {
-            if (!isAuthReady) return;
-
-            modelSelect.innerHTML = '<option value="" disabled selected>-- เลือก Model --</option>';
-            partNameSelect.innerHTML = '<option value="" disabled selected>-- เลือก Part Name --</option>';
-
-            const result = await fetchSheetData('read_unique');
+        /** Opens the modal, optionally populating data for editing. */
+        function openModal(record = null) {
+            const modalTitle = document.getElementById('modal-title');
             
-            if (result.success && result.data) {
-                populateSelects(result.data.uniqueModels || [], result.data.uniquePartNames || []);
+            if (record) {
+                modalTitle.textContent = 'แก้ไขข้อมูลการตั้งค่า';
+                document.getElementById('RowIndex').value = record.id;
+                // Populate form fields
+                FIELD_KEYS.forEach(key => {
+                    const el = document.getElementById(key);
+                    if (el) el.value = record[key] || '';
+                });
             } else {
-                // If fetching fails, we still need to allow the user to proceed to add data
-                // The error is shown in fetchSheetData, so no need to repeat.
-                populateSelects([], []); // Still call this to ensure the button is enabled
+                modalTitle.textContent = 'เพิ่มข้อมูลใหม่';
+                document.getElementById('data-form').reset();
+                document.getElementById('RowIndex').value = '';
+                
+                // Pre-fill Model/PartName if filters are selected
+                const filterModel = document.getElementById('filter-model').value;
+                const filterPartName = document.getElementById('filter-partName').value;
+                
+                if (filterModel) document.getElementById('Model').value = filterModel;
+                if (filterPartName) document.getElementById('PartName').value = filterPartName;
             }
+
+            document.getElementById('data-modal').classList.add('flex');
+            document.getElementById('data-modal').classList.remove('hidden');
         }
 
-        /**
-         * Populates the Model and Part Name select elements.
-         * @param {Array} uniqueModels 
-         * @param {Array} uniquePartNames 
-         */
-        function populateSelects(uniqueModels, uniquePartNames) {
+        /** Handles saving (insert or update) data to the sheet. */
+        async function handleSave(event) {
+            event.preventDefault();
             
-            // Populate Model Select
-            uniqueModels.sort().forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                modelSelect.appendChild(option);
+            const form = document.getElementById('data-form');
+            const RowIndex = document.getElementById('RowIndex').value;
+            const formData = new FormData(form);
+            const dataToSave = {};
+
+            // Collect all fields defined in FIELD_KEYS (from GS script)
+            FIELD_KEYS.forEach(key => {
+                const value = formData.get(key);
+                // Ensure empty strings are saved as empty in the sheet
+                dataToSave[key] = value ? value.trim() : ''; 
             });
 
-            // Populate Part Name Select
-            uniquePartNames.sort().forEach(partName => {
-                const option = document.createElement('option');
-                option.value = partName;
-                option.textContent = partName;
-                partNameSelect.appendChild(option);
-            });
-
-            // --- CRITICAL FIX: Always enable the submit button to allow adding the first record ---
-            submitSelectionBtn.disabled = false;
-            if (uniqueModels.length === 0 || uniquePartNames.length === 0) {
-                 submitSelectionBtn.textContent = 'แสดงข้อมูล (View Data) / เพิ่มข้อมูลเริ่มต้น';
-            } else {
-                 submitSelectionBtn.textContent = 'แสดงข้อมูล (View Data)';
-            }
-        }
-
-        /**
-         * Handles the selection submission and initiates the main data screen.
-         */
-        function handleSelectionSubmit() {
-            const model = modelSelect.value;
-            const partName = partNameSelect.value;
-
-            // Allow submission even if selections are empty (to add new data to an empty sheet)
-            if (!model || !partName) {
-                // Show warning but allow proceeding
-                document.getElementById('selection-status').classList.remove('hidden');
-            } else {
-                document.getElementById('selection-status').classList.add('hidden');
+            // Include RowIndex if it's an update
+            if (RowIndex) {
+                dataToSave.RowIndex = RowIndex;
             }
 
-            // Set global filter state and handle null values for the first entry
-            // Set default values based on the sample sheet image to assist first entry
-            selectedModel = model || 'RG21'; 
-            selectedPartName = partName || 'FC'; 
-
-            // Set form fields for saving/editing consistency
-            ModelInput.value = selectedModel;
-            PartNameInput.value = selectedPartName;
-
-            // Update display text
-            currentFilterDisplay.textContent = `Model: ${selectedModel}, Part Name: ${selectedPartName}`;
-
-            // Setup listener and switch screen
-            setupRealtimeListener(selectedModel, selectedPartName);
-            switchScreen('main');
-            // Force change to engineer mode to encourage first data entry if fields were empty
-            if (!model || !partName) {
-                switchMode('engineer');
-            }
-        }
-        
-        /**
-         * Switches visibility between the selection screen and the main app screen.
-         * @param {string} screen - 'selection' or 'main'
-         */
-        function switchScreen(screen) {
-            if (screen === 'selection') {
-                selectionScreen.classList.remove('hidden');
-                mainAppScreen.classList.add('hidden');
-            } else {
-                selectionScreen.classList.add('hidden'); // Fix: hide selection screen when showing main
-                mainAppScreen.classList.remove('hidden');
-                // Reset mode to view after filter selection
-                switchMode('view'); 
-            }
-        }
-
-
-        // --- Data Polling (Simulate Real-time) ---
-
-        /**
-         * Starts periodic polling for data updates.
-         * @param {string} model - The selected machine model
-         * @param {string} partName - The selected part name
-         */
-        function setupRealtimeListener(model, partName) {
-            if (pollingTimer) {
-                clearInterval(pollingTimer); 
-            }
-            if (!isAuthReady || !model || !partName) return;
-
-            // Immediate fetch upon setup
-            fetchAndRenderData(model, partName);
-
-            // Set up polling interval
-            pollingTimer = setInterval(() => {
-                fetchAndRenderData(model, partName, true); // Silent fetch
-            }, POLLING_INTERVAL);
-        }
-        
-        /**
-         * Fetches data and renders the list
-         * @param {string} model 
-         * @param {string} partName 
-         * @param {boolean} silent - If true, skip showing main loading indicator
-         */
-        async function fetchAndRenderData(model, partName, silent = false) {
-             if (!silent) showLoading();
-             
-             const result = await fetchSheetData('read_filtered', model, partName);
-             
-             if (!silent) hideLoading();
-
-             if (result.success && result.data) {
-                 renderConditionList(result.data.records || []);
-             } else if (!silent) {
-                 // Only show error if it's the main (non-silent) fetch
-                 // Error is handled inside fetchSheetData now.
-                 renderConditionList([]); // Clear table on error
-             }
-        }
-
-        /**
-         * Saves or updates a machine condition record
-         * @param {Object} data - The data object from the form
-         * @param {string} docId - The row index for update, or null for new record
-         */
-        async function saveCondition(data, docId) {
-            if (!isAuthReady) return;
-
-            // The docId here is the row index in the sheet (starting from 2 for data rows)
-            data.RowIndex = docId ? parseInt(docId) : null;
-            
-            const result = await postSheetData('save', data);
+            const result = await fetchData('save', {}, 'POST', dataToSave);
 
             if (result.success) {
-                showStatusMessage(docId ? 'อัพเดทข้อมูลเรียบร้อยแล้ว' : 'บันทึกข้อมูลใหม่เรียบร้อยแล้ว');
-                clearForm();
-                // Force data refetch after save
-                fetchAndRenderData(selectedModel, selectedPartName);
-                fetchUniqueCombinations(); // In case a new Model/PartName was added
-            } else {
-                showError('การบันทึกข้อมูลล้มเหลว');
+                showAlert(result.message);
+                closeModal();
+                // Reload the records to show the update/new record
+                await loadUniqueFilters(); // Ensure filters are updated if new Model/PartName was added
+                await loadFilteredRecords();
             }
         }
 
-        /**
-         * Deletes a machine condition record
-         * @param {string} docId - The row index to delete
-         */
-        window.deleteCondition = async (docId) => {
-            if (!confirmAction('คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้?')) {
+        /** Handles deleting a record from the sheet. */
+        async function handleDelete(id) {
+            if (!window.confirm('คุณยืนยันที่จะลบข้อมูลรายการนี้หรือไม่?')) return; // Simple confirmation modal is necessary here for action confirmation
+
+            const dataToDelete = { RowIndex: id };
+            const result = await fetchData('delete', {}, 'POST', dataToDelete);
+            
+            if (result.success) {
+                showAlert(result.message);
+                // Reload the records to show the change
+                await loadUniqueFilters(); 
+                await loadFilteredRecords();
+            }
+        }
+
+
+        // --- Data Loading Functions ---
+
+        /** Populates the filter dropdowns (Model and Part Name). */
+        async function loadUniqueFilters() {
+            const result = await fetchData('read_unique');
+
+            if (result.success) {
+                uniqueModels = result.data.uniqueModels.sort();
+                uniquePartNames = result.data.uniquePartNames.sort();
+                
+                const modelSelect = document.getElementById('filter-model');
+                const partNameSelect = document.getElementById('filter-partName');
+
+                // Function to populate a select element
+                const populateSelect = (selectEl, options, label) => {
+                    // Store current selected value
+                    const currentValue = selectEl.value; 
+                    
+                    selectEl.innerHTML = `<option value="" disabled ${!currentValue ? 'selected' : ''}>เลือก ${label}</option>`;
+                    options.forEach(option => {
+                        const isSelected = option === currentValue ? 'selected' : '';
+                        selectEl.innerHTML += `<option value="${option}" ${isSelected}>${option}</option>`;
+                    });
+                    
+                    // If the previously selected value no longer exists, reset selection
+                    if (currentValue && !options.includes(currentValue)) {
+                        selectEl.value = "";
+                    }
+                };
+
+                populateSelect(modelSelect, uniqueModels, 'Model');
+                populateSelect(partNameSelect, uniquePartNames, 'Part Name');
+            }
+        }
+
+        /** Loads and displays filtered records based on current selections. */
+        async function loadFilteredRecords() {
+            const model = document.getElementById('filter-model').value;
+            const partName = document.getElementById('filter-partName').value;
+            const tableBody = document.getElementById('data-table-body');
+            
+            if (!model || !partName) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-red-500 font-semibold">! กรุณาเลือกทั้ง Model และ Part Name !</td></tr>`;
                 return;
             }
 
-            if (!isAuthReady) return;
-
-            const data = { RowIndex: parseInt(docId) };
-            const result = await postSheetData('delete', data);
-
+            const result = await fetchData('read_filtered', { model, partName });
+            
             if (result.success) {
-                showStatusMessage('ลบข้อมูลเรียบร้อยแล้ว', false);
-                // Force data refetch after delete
-                fetchAndRenderData(selectedModel, selectedPartName);
-                fetchUniqueCombinations(); // Re-check filter options
-            } else {
-                showError('การลบข้อมูลล้มเหลว');
-            }
-        }
-        
+                const records = result.data.records;
+                tableBody.innerHTML = ''; // Clear existing data
 
-        // --- UI Rendering and Interaction (Mostly Unchanged) ---
+                if (records.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-gray-500">ไม่พบข้อมูลสำหรับเงื่อนไขที่เลือก</td></tr>`;
+                    return;
+                }
 
-        /**
-         * Populates the form fields for editing an existing record.
-         * @param {string} docId - The row index to edit
-         * @param {Object} data - The data object
-         */
-        window.editCondition = (docId, data) => {
-            document.getElementById('doc-id').value = docId;
-            // Model and PartName are already set from the filter state
-            document.getElementById('Model').value = data.Model || '';
-            document.getElementById('PartName').value = data.PartName || '';
-            document.getElementById('ProcessNo').value = data.ProcessNo || '';
-            document.getElementById('MachineNo').value = data.MachineNo || '';
-            document.getElementById('ProcessName').value = data.ProcessName || '';
-            document.getElementById('ThreadNo').value = data.ThreadNo || '';
-            document.getElementById('NeedleNo').value = data.NeedleNo || '';
-            document.getElementById('StitchLength').value = data.StitchLength || '';
-            document.getElementById('UpperTension').value = data.UpperTension || '';
-            document.getElementById('LowerTension').value = data.LowerTension || '';
-            document.getElementById('OuterFootPressure').value = data.OuterFootPressure || '';
-            document.getElementById('InnerFootPressure').value = data.InnerFootPressure || '';
-            document.getElementById('StopperDistance').value = data.StopperDistance || '';
-            document.getElementById('AirPressure').value = data.AirPressure || '';
-            document.getElementById('SpeedRPM').value = data.SpeedRPM || '';
-            document.getElementById('ManSkill').value = data.ManSkill || '';
-            
-            analysisOutputContainer.classList.add('hidden');
-            analysisText.innerHTML = '';
-
-            submitBtn.textContent = 'อัพเดทข้อมูล';
-            switchMode('engineer');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        /**
-         * Clears the form and resets to 'New Record' mode.
-         */
-        function clearForm() {
-            conditionForm.reset();
-            // Important: Model and PartName fields must retain filter values (or the default set when bypassing filter)
-            ModelInput.value = selectedModel;
-            PartNameInput.value = selectedPartName;
-            
-            document.getElementById('doc-id').value = '';
-            submitBtn.textContent = 'บันทึกข้อมูล';
-            analysisOutputContainer.classList.add('hidden');
-            analysisText.innerHTML = '';
-        }
-
-        /**
-         * Renders the list of conditions in the table
-         * @param {Array} conditions - Array of condition objects
-         */
-        function renderConditionList(conditions) {
-            conditionList.innerHTML = '';
-            
-            // Update the no-data-row text based on filter presence
-            if (selectedModel && selectedPartName) {
-                 document.getElementById('no-data-row').children[0].textContent = `ไม่มีข้อมูล Condition Machine สำหรับ Model: ${selectedModel}, Part Name: ${selectedPartName}`;
-            }
-
-            if (conditions.length === 0) {
-                noDataRow.classList.remove('hidden');
-                return;
-            }
-            noDataRow.classList.add('hidden');
-
-            conditions.forEach(data => {
-                // The 'id' in this case is the Row Index from the sheet (starting from 2 for data rows)
-                const docId = data.id; 
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50 transition duration-100';
-
-                // Combine Model / Part Name (now fixed for the filtered view)
-                tr.innerHTML += `<td class="font-medium text-gray-900">${data.Model || '-'} <br><span class="text-xs text-gray-500">${data.PartName || '-'}</span></td>`;
-                
-                // Render remaining fields
-                tr.innerHTML += `<td>${data.ProcessNo || '-'}</td>`;
-                tr.innerHTML += `<td>${data.MachineNo || '-'}</td>`;
-                tr.innerHTML += `<td>${data.ProcessName || '-'}</td>`;
-                tr.innerHTML += `<td>${data.ThreadNo || '-'}</td>`;
-                tr.innerHTML += `<td>${data.NeedleNo || '-'}</td>`;
-                tr.innerHTML += `<td>${data.StitchLength || '-'}</td>`;
-                tr.innerHTML += `<td class="text-blue-600">${data.UpperTension || '-'}</td>`;
-                tr.innerHTML += `<td class="text-blue-600">${data.LowerTension || '-'}</td>`;
-                tr.innerHTML += `<td class="text-red-600">${data.OuterFootPressure || '-'}</td>`;
-                tr.innerHTML += `<td class="text-red-600">${data.InnerFootPressure || '-'}</td>`;
-                tr.innerHTML += `<td>${data.StopperDistance || '-'}</td>`;
-                tr.innerHTML += `<td>${data.AirPressure || '-'}</td>`;
-                tr.innerHTML += `<td>${data.SpeedRPM || '-'}</td>`;
-                tr.innerHTML += `<td class="font-bold text-green-600">${data.ManSkill || '-'}</td>`;
-
-                // Actions Column (Visible only in Engineer Mode)
-                const actionsTd = document.createElement('td');
-                actionsTd.id = `actions-${docId}`;
-                actionsTd.className = 'flex space-x-2 hidden'; 
-                
-                const editBtn = document.createElement('button');
-                editBtn.className = 'text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 transition';
-                editBtn.title = 'แก้ไข';
-                editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-3.586 3.586l-7.78 7.78a1 1 0 00-.232.398l-1 4a1 1 0 001.26 1.26l4-1a1 1 0 00.398-.232l7.78-7.78-2.828-2.828z" /></svg>`;
-                editBtn.onclick = () => window.editCondition(docId, data);
-                
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition';
-                deleteBtn.title = 'ลบ';
-                deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 7a1 1 0 012 0v5a1 1 0 11-2 0V7zm6 0a1 1 0 11-2 0v5a1 1 0 112 0V7z" clip-rule="evenodd" /></svg>`;
-                deleteBtn.onclick = () => window.deleteCondition(docId);
-
-                actionsTd.appendChild(editBtn);
-                actionsTd.appendChild(deleteBtn);
-                tr.appendChild(actionsTd);
-                
-                // TTS Button Column
-                const ttsTd = document.createElement('td');
-                const ttsBtn = document.createElement('button');
-                ttsBtn.className = 'tts-button px-3 py-1 rounded-full text-xs font-semibold';
-                ttsBtn.title = 'ฟังค่า Condition';
-                ttsBtn.innerHTML = `🔊 ฟัง`;
-                ttsBtn.onclick = (e) => window.speakCondition(data, e.currentTarget);
-                ttsTd.appendChild(ttsBtn);
-                tr.appendChild(ttsTd);
-
-                conditionList.appendChild(tr);
-            });
-
-            switchMode(currentMode);
-        }
-
-        /**
-         * Switches the application's operating mode (Unchanged)
-         * @param {string} mode - 'engineer' or 'view'
-         */
-        function switchMode(mode) {
-            currentMode = mode;
-
-            const engineerBtn = document.getElementById('mode-engineer');
-            const viewBtn = document.getElementById('mode-view');
-            
-            // Select only the direct children td elements in the list body (excluding header)
-            // Note: The index 16 is fixed based on the total columns (15 data + 1 action)
-            const allActionCells = document.querySelectorAll('#condition-list tr td:nth-child(16)');
-            const allTTSCells = document.querySelectorAll('#condition-list tr td:last-child');
-            const ttsHeader = document.querySelector('thead tr th:last-child');
-
-            if (mode === 'engineer') {
-                engineerModeDiv.classList.remove('hidden');
-                engineerBtn.classList.add('bg-blue-600', 'text-white');
-                viewBtn.classList.remove('bg-blue-600', 'text-white');
-                viewBtn.classList.add('bg-gray-200', 'text-gray-700');
-                
-                tableActionsHeader.classList.remove('hidden');
-                allActionCells.forEach(td => td.classList.remove('hidden'));
-
-                // Hide TTS column in engineer mode
-                ttsHeader.classList.add('hidden');
-                allTTSCells.forEach(td => td.classList.add('hidden'));
-
-            } else { // 'view' mode
-                engineerModeDiv.classList.add('hidden');
-                viewBtn.classList.add('bg-blue-600', 'text-white');
-                engineerBtn.classList.remove('bg-blue-600', 'text-white');
-                engineerBtn.classList.add('bg-gray-200', 'text-gray-700');
-                
-                tableActionsHeader.classList.add('hidden');
-                allActionCells.forEach(td => td.classList.add('hidden'));
-
-                // Show TTS column in view mode
-                ttsHeader.classList.remove('hidden');
-                allTTSCells.forEach(td => td.classList.remove('hidden'));
+                records.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 transition duration-150';
+                    
+                    // Row content (grouped for table readability)
+                    row.innerHTML = `
+                        <!-- Model / Part Name -->
+                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm font-bold text-gray-900">
+                            ${record.Model || '-'} / ${record.PartName || '-'}
+                        </td>
+                        <!-- Process / Machine -->
+                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm text-gray-700">
+                            <span class="font-semibold">${record.ProcessName || '-'}</span><br>
+                            <span class="text-xs text-gray-500">${record.ProcessNo || '-'} / ${record.MachineNo || '-'}</span>
+                        </td>
+                        <!-- Main Settings -->
+                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm text-gray-700">
+                            <span class="block">ด้าย: ${record.ThreadNo || '-'} / เข็ม: ${record.NeedleNo || '-'}</span>
+                            <span class="text-xs text-gray-500">ฝีเข็ม: ${record.StitchLength || '-'}</span>
+                        </td>
+                        <!-- Tension -->
+                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm text-gray-700">
+                            บน: ${record.UpperTension || '-'} N<br>
+                            ล่าง: ${record.LowerTension || '-'} N
+                        </td>
+                        <!-- Pressure / Stopper -->
+                        <td class="px-3 py-3 whitespace-nowrap border-r text-sm text-gray-700">
+                            นอก: ${record.OuterFootPressure || '-'} Kg<br>
+                            ใน: ${record.InnerFootPressure || '-'} Kg<br>
+                            <span class="text-xs text-gray-500">Stopper: ${record.StopperDistance || '-'} mm</span>
+                        </td>
+                        <!-- Speed / Man Skill -->
+                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700">
+                            RPM: ${record.SpeedRPM || '-'} / ลม: ${record.AirPressure || '-'} bar<br>
+                            <span class="font-semibold text-xs text-blue-600">Skill: ${record.ManSkill || '-'}</span>
+                        </td>
+                        <!-- Actions -->
+                        <td class="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <button onclick='openModal(${JSON.stringify(record)})' class="text-indigo-600 hover:text-indigo-900 mr-2 p-1 rounded hover:bg-indigo-100 transition">
+                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            </button>
+                            <button onclick='handleDelete(${record.id})' class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 transition">
+                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
             }
         }
 
-        // --- Event Listeners ---
+        // --- Initialization ---
+        window.onload = function() {
+            // Load filters on startup
+            loadUniqueFilters();
 
-        conditionForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-
-            const data = {};
-            const docId = document.getElementById('doc-id').value;
-
-            // Collect all fields
-            fields.forEach(field => {
-                const element = document.getElementById(field);
-                if (element) {
-                    data[field] = element.value.trim() || null;
-                    if (element.type === 'number' && data[field] !== null) {
-                        data[field] = parseFloat(data[field]);
+            // Add event listeners to filters to automatically select the first option
+            document.getElementById('filter-model').addEventListener('change', (e) => {
+                if(e.target.value) {
+                    // When Model changes, ensure PartName is selected (if only one option)
+                    const partNameSelect = document.getElementById('filter-partName');
+                    // Check if there are only 2 options (the placeholder and one actual value) and the placeholder is selected
+                    if (partNameSelect.options.length === 2 && partNameSelect.value === "") {
+                        partNameSelect.selectedIndex = 1; 
                     }
-                    if (field === 'Model' || field === 'PartName') {
-                         data[field] = data[field] || selectedModel; // Ensure filter fields use the current filter state/default
-                    }
+                    loadFilteredRecords();
                 }
             });
-
-            saveCondition(data, docId);
-        });
-
-        document.getElementById('generate-analysis-btn').addEventListener('click', generateAnalysis);
-        document.getElementById('clear-form-btn').addEventListener('click', clearForm);
-        document.getElementById('mode-engineer').addEventListener('click', () => switchMode('engineer'));
-        document.getElementById('mode-view').addEventListener('click', () => switchMode('view'));
-
-        // New Selection Listeners
-        submitSelectionBtn.addEventListener('click', handleSelectionSubmit);
-        resetFilterBtn.addEventListener('click', () => {
-            // Stop polling
-            if (pollingTimer) {
-                clearInterval(pollingTimer); 
-                pollingTimer = null;
-            }
-            // Clear filter state
-            selectedModel = null;
-            selectedPartName = null;
-            modelSelect.value = '';
-            partNameSelect.value = '';
-
-            // Go back to selection screen and re-fetch options
-            fetchUniqueCombinations();
-            switchScreen('selection');
-        });
-
-
-        // Initialize App
-        initializeApp();
-        switchScreen('selection'); // Start on the selection screen
+            document.getElementById('filter-partName').addEventListener('change', () => {
+                const model = document.getElementById('filter-model').value;
+                const partName = document.getElementById('filter-partName').value;
+                // Only load if both selections are made
+                if (model && partName) {
+                    loadFilteredRecords();
+                }
+            });
+        };
 
     </script>
 </body>
 </html>
-
