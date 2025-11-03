@@ -253,17 +253,17 @@
         // NOTE: URL นี้เป็นรูปแบบ ID ของ Script ไม่ใช่ URL ที่ใช้สำหรับ fetch() โดยตรง
         // แต่ถ้าคุณได้ Deploy เป็น Web App แล้ว ผมจะใช้ URL ที่สมมติว่าถูกต้องก่อนหน้านี้
         // พร้อมแทนที่ด้วย ID ล่าสุดของคุณ (หากมี) เพื่อให้ระบบทำงานต่อได้
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxSW5FYZPQG6K7_65-s6iFBtniJf4gxsBe9J61QlcuXXf6ffY8Ykx3SP54I6I7tDbfvRw/exec'; // URL เดิมที่สมมติว่าใช้ได้
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyJEYrROsyoZWypCKQqMsk7sn8PfS4XNDmAabuECcuiVtXDQUmUB_HLL4YosfaJ4c8ZIg/exec'; // URL เดิมที่สมมติว่าใช้ได้
         
         // ** เนื่องจาก URL ที่คุณแจ้งล่าสุดเป็นรูปแบบ ID ของ Script (AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw)
         // ** ผมจะใช้ ID นี้มาสร้าง URL ในรูปแบบที่ควรจะเป็นสำหรับการ Deploy ล่าสุด
-        const SCRIPT_ID = 'AKfycbxSW5FYZPQG6K7_65-s6iFBtniJf4gxsBe9J61QlcuXXf6ffY8Ykx3SP54I6I7tDbfvRw'; // ใช้ ID นี้เป็นตัวอย่าง
+        const SCRIPT_ID = 'AKfycbyJEYrROsyoZWypCKQqMsk7sn8PfS4XNDmAabuECcuiVtXDQUmUB_HLL4YosfaJ4c8ZIg'; // ใช้ ID นี้เป็นตัวอย่าง
         // const SCRIPT_ID = 'AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw'; // ID ล่าสุดที่ไม่ได้เป็น full URL
         // หากต้องการให้โค้ดทำงานได้จริง คุณต้องแทนที่ WEB_APP_URL ด้านล่างด้วย Full URL ที่ได้จากการ Publish Web App ล่าสุด
 
         // ** การแก้ไขที่สำคัญ: แทนที่ WEB_APP_URL ด้วย Full URL ที่ได้จากการ Deploy Google Apps Script ล่าสุด **
         // เนื่องจาก "AKfyc..." เป็นแค่ ID แต่ไม่ใช่ URL ที่ใช้ fetch ได้โดยตรง ผมจะใช้รูปแบบ URL เต็ม
-        const WEB_APP_URL_FULL = 'https://script.google.com/macros/s/AKfycbyBMcni8cfrglEqdbtcEAWpy735uVAyiijLLCUnor2YE5RwvgCDRGrDP-Wz653SXfCLLw/exec'; 
+        const WEB_APP_URL_FULL = 'https://script.google.com/macros/s/AKfycbyJEYrROsyoZWypCKQqMsk7sn8PfS4XNDmAabuECcuiVtXDQUmUB_HLL4YosfaJ4c8ZIg/exec'; 
         
         // ใช้ URL ตัวเต็ม (Full URL) ที่ได้จากการ Deploy เป็น Web App ล่าสุด
         const WEB_APP_URL = WEB_APP_URL_FULL; 
@@ -1123,3 +1123,4 @@
     </script>
 </body>
 </html>
+
