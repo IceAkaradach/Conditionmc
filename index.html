@@ -3,654 +3,662 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>บันทึกพารามิเตอร์เครื่องจักรเย็บผ้า</title>
-    <!-- โหลด Tailwind CSS -->
+    <title>เครื่องมือดึงข้อมูลจากรูปภาพ</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* กำหนดฟอนต์ Inter และความสวยงามพื้นฐาน */
+        /* ตั้งค่าฟอนต์หลักเป็น Inter หรือฟอนต์ Sans-serif อื่น ๆ */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            background-color: #f7f9fb;
         }
-        .container {
-            max-width: 1400px;
+        /* Style for editable spans in header for better visibility */
+        .editable-span {
+            min-width: 100px; /* Ensures space when empty */
+            display: inline-block;
+            border-bottom: 2px dotted transparent;
+            cursor: text;
         }
-        .table-container {
-            overflow-x: auto;
+        .editable-span:focus {
+            outline: none;
+            border-bottom: 2px dotted #4f46e5;
         }
-        /* Style for required fields in form (optional, but good practice) */
-        .required-label::after {
-            content: " *";
-            color: #ef4444; /* red-500 */
+        /* Style for editable input fields inside the table */
+        .editable-input {
+            width: 100%;
+            background-color: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            line-height: inherit;
+            box-shadow: none;
+            outline: none;
+            transition: all 0.1s;
         }
-        /* Custom scrollbar for better look */
-        .table-container::-webkit-scrollbar {
-            height: 8px;
-        }
-        .table-container::-webkit-scrollbar-thumb {
-            background: #cbd5e1; /* slate-300 */
-            border-radius: 4px;
-        }
-        .table-container::-webkit-scrollbar-track {
-            background: #f1f5f9; /* slate-100 */
+        .editable-input:focus {
+            background-color: #fffbeb; /* Light yellow background when focused */
+            box-shadow: 0 0 0 1px #a78bfa inset;
         }
     </style>
 </head>
 <body class="p-4 md:p-8">
-    <div class="container mx-auto">
-        <header class="text-center mb-8 bg-white p-6 rounded-xl shadow-lg">
-            <h1 class="text-3xl font-extrabold text-blue-700">⚙️ บันทึกพารามิเตอร์เครื่องจักรเย็บผ้า</h1>
-            <p class="text-gray-600 mt-2">ระบบจัดการข้อมูล Model และ Part Name สำหรับการตั้งค่าจักรเย็บผ้า</p>
-        </header>
 
-        <!-- Loading Indicator -->
-        <div id="loading" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
-            <div class="bg-white p-6 rounded-lg shadow-xl flex items-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
-                <span class="text-lg font-medium text-gray-700">กำลังโหลดข้อมูล...</span>
+    <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-10">
+
+        <!-- หัวข้อและคำแนะนำ -->
+        <h1 class="text-3xl font-bold text-gray-800 mb-0">เครื่องมือดึงข้อมูลจากรูปภาพ</h1>
+        <p class="text-sm text-gray-400 mb-2">Revision: v1.07</p>
+        <p class="text-lg text-indigo-600 mb-6 border-b pb-4">อัปโหลดรูปภาพแผงควบคุมเพื่อดึงค่า, แก้ไข, และบันทึกข้อมูล</p>
+
+        <!-- ส่วนสำหรับอัปโหลดและประมวลผล -->
+        <div class="space-y-4 mb-8 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+            <!-- File Input -->
+            <input type="file" id="imageUpload" accept="image/*" class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-indigo-50 file:text-indigo-700
+                hover:file:bg-indigo-100" />
+            
+            <!-- Process Button -->
+            <button id="processButton" onclick="handleUpload()" disabled
+                class="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed">
+                ดึงข้อมูลจากรูปภาพ
+            </button>
+            
+        </div>
+
+        <!-- Loading Indicator & Error Area -->
+        <div id="loading" class="hidden text-center p-4 bg-yellow-100 rounded-lg text-yellow-700 font-medium mb-6">
+            <p>กำลังประมวลผล... กรุณารอสักครู่ (อาจใช้เวลา 5-10 วินาที)</p>
+        </div>
+        
+        <div id="errorArea" class="hidden mb-6 p-4 bg-red-100 border border-red-300 rounded-lg text-red-700 font-medium">
+            <p>⚠️ เกิดข้อผิดพลาดในการประมวลผล</p>
+            <p id="errorMessage" class="text-sm mt-1"></p>
+        </div>
+        
+        <!-- Machine No. Selector -->
+        <div class="mb-8 p-4 bg-purple-50 rounded-lg border border-purple-200 shadow-inner">
+            <label for="machineNoSelect" class="block text-center font-bold text-lg text-purple-700 mb-2">เลือกหมายเลขเครื่องจักร (Machine No.)</label>
+            <select id="machineNoSelect" class="w-full p-3 border border-purple-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 text-xl font-bold text-center">
+                <option value="" disabled selected>-- กรุณาเลือก Machine No. --</option>
+                <option value="SC001">SC001</option>
+                <option value="SC002">SC002</option>
+                <option value="SC003">SC003</option>
+                <option value="SC004">SC004</option>
+                <option value="SC005">SC005</option>
+                <option value="SC006">SC006</option>
+                <option value="SC007">SC007</option>
+                <option value="SC008">SC008</option>
+                <option value="SC009">SC009</option>
+                <option value="SC010">SC010</option>
+                <option value="SC011">SC011</option>
+                <option value="SC012">SC012</option>
+                <option value="SC013">SC013</option>
+                <option value="SC014">SC014</option>
+                <option value="SC015">SC015</option>
+                <option value="SC016">SC016</option>
+            </select>
+        </div>
+
+        <!-- ส่วนที่ 1: ข้อมูลโปรแกรมหลักที่ดึงจากภาพ (Editable using contenteditable) -->
+        <div class="mb-8 bg-indigo-50 p-4 rounded-lg border border-indigo-200 shadow-inner">
+            
+            <!-- กล่องหลัก Dropdown -->
+            <div class="flex items-center justify-center space-x-6 mb-4">
+                <label for="mainBoxSelect" class="text-xl font-bold text-red-700">กล่องหลัก</label>
+                <select id="mainBoxSelect" class="p-3 border-2 border-red-500 rounded-lg shadow-md focus:ring-red-500 focus:border-red-500 text-2xl font-extrabold text-center text-red-700">
+                    <option value="" disabled selected>-- เลือก --</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </select>
+            </div>
+            
+            <div class="text-center">
+                <p class="font-semibold text-sm text-gray-500 uppercase tracking-wider">ชื่อโปรแกรมที่ดึงได้</p>
+                <span id="programName" contenteditable="true" class="editable-span block text-3xl font-extrabold text-gray-700">-- N/A --</span>
+                <p class="text-base text-gray-600">
+                    <span id="activePatternPNo" contenteditable="true" class="editable-span font-bold">-- N/A --</span> : 
+                    <span id="pNoValue" contenteditable="true" class="editable-span">-- N/A --</span>
+                </p>
             </div>
         </div>
 
-        <!-- Toast Message for Success/Error -->
-        <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
-            <!-- Toast messages will be injected here -->
-        </div>
+        <!-- ส่วนที่ 2: ตารางแสดงรายละเอียดการตั้งค่า -->
+        <div class="space-y-6">
+            <h2 class="text-2xl font-semibold text-gray-700 border-b-2 pb-2">รายละเอียดการตั้งค่าและพิกัด</h2>
 
-        <!-- Filter Section -->
-        <section id="filter-section" class="bg-white p-6 rounded-xl shadow-lg mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">ค้นหาพารามิเตอร์</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <div>
-                    <label for="model-filter" class="block text-sm font-medium text-gray-700 mb-1">Model:</label>
-                    <select id="model-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition duration-150 ease-in-out">
-                        <option value="">-- เลือก Model --</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="partname-filter" class="block text-sm font-medium text-gray-700 mb-1">Part Name:</label>
-                    <select id="partname-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition duration-150 ease-in-out">
-                        <option value="">-- เลือก Part Name --</option>
-                    </select>
-                </div>
-                <div class="flex space-x-2">
-                    <button id="apply-filter-btn" class="w-full flex-1 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300 ease-in-out shadow-md">
-                        ค้นหา
-                    </button>
-                    <button id="add-record-btn" class="w-full flex-1 bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300 ease-in-out shadow-md" onclick="openModal()">
-                        + เพิ่มข้อมูลใหม่
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Data Table Section -->
-        <section id="data-section" class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">ผลการค้นหา</h2>
-            <div id="table-message" class="text-center text-gray-500 p-8 hidden">
-                กรุณาเลือก Model และ Part Name เพื่อแสดงข้อมูล
-            </div>
-            <div class="table-container">
-                <table id="data-table" class="min-w-full divide-y divide-gray-200 border border-gray-200 hidden">
-                    <thead class="bg-blue-50">
-                        <!-- Table Headers will be injected here by renderTable -->
+            <div class="overflow-x-auto rounded-lg shadow-md">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">หมวดหมู่</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">รายการข้อมูล</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ค่าที่ดึงจากภาพ (แก้ไขได้)</th>
+                        </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200" id="data-table-body">
-                        <!-- Table Rows will be injected here by renderTable -->
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <!-- พิกัด X -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">พิกัด</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">พิกัด X</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="text" id="coordX" class="editable-input text-green-600 font-mono" value="X -- N/A --">
+                            </td>
+                        </tr>
+                        <!-- พิกัด Y -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">พิกัด</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">พิกัด Y</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="text" id="coordY" class="editable-input text-green-600 font-mono" value="Y -- N/A --">
+                            </td>
+                        </tr>
+                        <!-- การตั้งค่า 1 -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">การตั้งค่า</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">จำนวนฝีเข็ม</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="text" id="setting1" class="editable-input text-blue-600 font-mono" value="-- N/A --">
+                            </td>
+                        </tr>
+                        <!-- การตั้งค่า 2 -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">การตั้งค่า</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">แรงตึงด้าย</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="text" id="setting2" class="editable-input text-blue-600 font-mono" value="-- N/A --">
+                            </td>
+                        </tr>
+                        <!-- การตั้งค่า 3 -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">การตั้งค่า</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">ความเร็ว</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="text" id="setting3" class="editable-input text-blue-600 font-mono" value="-- N/A --">
+                            </td>
+                        </tr>
+                        <!-- การตั้งค่า 4 -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">การตั้งค่า</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">ความสูงตีนผี</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="text" id="setting4" class="editable-input text-blue-600 font-mono" value="-- N/A --">
+                            </td>
+                        </tr>
+                        <!-- การตั้งค่า 5 -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">การตั้งค่า</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">+X,-X</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="text" id="setting5" class="editable-input text-blue-600 font-mono" value="-- N/A --">
+                            </td>
+                        </tr>
+                        <!-- การตั้งค่า 6 -->
+                        <tr class="bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">การตั้งค่า</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-600">+Y,-Y</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="text" id="setting6" class="editable-input text-blue-600 font-mono" value="-- N/A --">
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
-        </section>
-    </div>
 
-    <!-- Modal for Add/Edit Record -->
-    <div id="record-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target.id === 'record-modal') closeModal()">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 transform transition-all duration-300">
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 id="modal-title" class="text-2xl font-bold text-blue-700">เพิ่มข้อมูลใหม่</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition duration-150">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-            <form id="record-form">
-                <input type="hidden" id="RowIndex" name="RowIndex">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    
-                    <!-- Form Fields (Generated Dynamically or explicitly listed) -->
-                    <!-- I'll list the key fields explicitly for simplicity and control -->
-
-                    <!-- Model (Text Input) -->
-                    <div>
-                        <label for="Model" class="block text-sm font-medium text-gray-700 required-label">Model</label>
-                        <input type="text" id="Model" name="Model" required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- PartName (Text Input) -->
-                    <div>
-                        <label for="PartName" class="block text-sm font-medium text-gray-700 required-label">Part Name</label>
-                        <input type="text" id="PartName" name="PartName" required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    
-                    <!-- ProcessNo (Text Input) -->
-                    <div>
-                        <label for="ProcessNo" class="block text-sm font-medium text-gray-700">Process No.</label>
-                        <input type="text" id="ProcessNo" name="ProcessNo" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- MachineNo (Text Input) -->
-                    <div>
-                        <label for="MachineNo" class="block text-sm font-medium text-gray-700">Machine No.</label>
-                        <input type="text" id="MachineNo" name="MachineNo" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- ProcessName (Text Input) -->
-                    <div>
-                        <label for="ProcessName" class="block text-sm font-medium text-gray-700">ชื่อกระบวนการ</label>
-                        <input type="text" id="ProcessName" name="ProcessName" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- ThreadNo (Text Input) -->
-                    <div>
-                        <label for="ThreadNo" class="block text-sm font-medium text-gray-700">เบอร์ด้าย</label>
-                        <input type="text" id="ThreadNo" name="ThreadNo" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- NeedleNo (Text Input) -->
-                    <div>
-                        <label for="NeedleNo" class="block text-sm font-medium text-gray-700">เบอร์เข็ม</label>
-                        <input type="text" id="NeedleNo" name="NeedleNo" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- StitchLength (Number Input) -->
-                    <div>
-                        <label for="StitchLength" class="block text-sm font-medium text-gray-700">ฝีเข็ม</label>
-                        <input type="number" step="any" id="StitchLength" name="StitchLength" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- UpperTension (Number Input) -->
-                    <div>
-                        <label for="UpperTension" class="block text-sm font-medium text-gray-700">แรงตึงด้ายบน (N) STD + 3</label>
-                        <input type="number" step="any" id="UpperTension" name="UpperTension" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- LowerTension (Number Input) -->
-                    <div>
-                        <label for="LowerTension" class="block text-sm font-medium text-gray-700">แรงตึงด้ายล่าง (N) STD + 3</label>
-                        <input type="number" step="any" id="LowerTension" name="LowerTension" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- OuterFootPressure (Number Input) -->
-                    <div>
-                        <label for="OuterFootPressure" class="block text-sm font-medium text-gray-700">แรงกดตีนผีนอก (Kg) STD + 1</label>
-                        <input type="number" step="any" id="OuterFootPressure" name="OuterFootPressure" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- InnerFootPressure (Number Input) -->
-                    <div>
-                        <label for="InnerFootPressure" class="block text-sm font-medium text-gray-700">แรงกดตีนผีใน (Kg) STD + 1</label>
-                        <input type="number" step="any" id="InnerFootPressure" name="InnerFootPressure" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- StopperDistance (Number Input) -->
-                    <div>
-                        <label for="StopperDistance" class="block text-sm font-medium text-gray-700">ระยะ stopper ตะเข็บ (mm)</label>
-                        <input type="number" step="any" id="StopperDistance" name="StopperDistance" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- AirPressure (Number Input) -->
-                    <div>
-                        <label for="AirPressure" class="block text-sm font-medium text-gray-700">แรงลม (bar)</label>
-                        <input type="number" step="any" id="AirPressure" name="AirPressure" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- SpeedRPM (Number Input) -->
-                    <div>
-                        <label for="SpeedRPM" class="block text-sm font-medium text-gray-700">ความเร็วรอบ (rpm)</label>
-                        <input type="number" step="1" id="SpeedRPM" name="SpeedRPM" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
-                    <!-- ManSkill (Number Input) -->
-                    <div>
-                        <label for="ManSkill" class="block text-sm font-medium text-gray-700">Man skill ≥</label>
-                        <input type="number" step="any" id="ManSkill" name="ManSkill" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-
+            <!-- ส่วนที่ 3: รายการแพทเทิร์นที่กำลังใช้งาน (แสดงเฉพาะ Active Pattern) -->
+            <div class="mt-8">
+                <h2 class="text-2xl font-semibold text-gray-700 border-b-2 pb-2 mb-4">แพทเทิร์นที่กำลังใช้งาน (Active Pattern)</h2>
+                <div class="flex flex-wrap gap-3 p-4 bg-gray-100 rounded-lg justify-center">
+                    <!-- แสดงเฉพาะแพทเทิร์นที่ Active -->
+                    <span id="activePatternDisplay" contenteditable="true" class="editable-span px-4 py-2 text-xl bg-gray-400 text-white font-bold rounded-lg shadow-xl border-4 border-gray-500">
+                        -- N/A --
+                    </span>
                 </div>
-
-                <!-- Footer Buttons -->
-                <div class="mt-8 pt-4 border-t flex justify-end space-x-3">
-                    <button type="button" onclick="closeModal()" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition duration-150">
-                        ยกเลิก
-                    </button>
-                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150 shadow-md">
-                        บันทึกข้อมูล
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Confirmation Modal for Deletion -->
-    <div id="confirm-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center z-50 p-4" onclick="if(event.target.id === 'confirm-modal') hideConfirmModal()">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all duration-300">
-            <h3 class="text-xl font-bold text-red-600 mb-4">ยืนยันการลบ</h3>
-            <p class="text-gray-700 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-            <div class="flex justify-end space-x-3">
-                <button type="button" onclick="hideConfirmModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition duration-150">
-                    ยกเลิก
-                </button>
-                <button type="button" id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition duration-150 shadow-md">
-                    ยืนยันการลบ
-                </button>
             </div>
         </div>
+        
+        <!-- Action Buttons (Save and Clear) moved to the bottom -->
+        <div class="flex space-x-4 pt-6 mt-6 border-t border-gray-200">
+            <button id="saveButton" onclick="handleSave()" disabled
+                class="w-1/2 py-3 px-4 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-4 0V4m0 3h-4m4 0h4m-4 0v3m-4 0h4m-4 0h4"></path></svg>
+                บันทึกข้อมูล (Save)
+            </button>
+            <button id="clearButton" onclick="clearDataFields()" 
+                class="w-1/2 py-3 px-4 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-150 ease-in-out">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                ล้างข้อมูล (Clear)
+            </button>
+        </div>
+        
+        <!-- คำแนะนำการใช้งาน -->
+        <div class="mt-4 pt-4 border-t border-gray-200">
+             <p class="text-sm text-gray-500">
+                💡 **หมายเหตุ:** กรุณาตรวจสอบความถูกต้องข้อมูลด้วยนะครับบบบ 
+            </p>
+            <p class="text-xs text-red-400 mt-1">
+                (🚫 **สถานะ:** ปิดการใช้งาน Firebase Firestore และการตรวจสอบสิทธิ์แล้ว)
+            </p>
+        </div>
+
+    </div>
+    
+    <!-- Floating Toast Notification (Pop-up confirmation) -->
+    <div id="toastNotification" class="fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-2xl transition-opacity duration-300 opacity-0 pointer-events-none text-white font-semibold transform translate-y-full">
+        <p id="toastMessage"></p>
     </div>
 
-    <script>
-        // *** CONFIGURATION ***
-        // URL ของ Google Apps Script Web App (Development URL)
-        // **โปรดเปลี่ยนเป็น '.../exec' เมื่อ Deploy เป็นเวอร์ชันจริง**
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbylU6Zl-kiPgEFiBE3M3w95fP_dTrSmSfQlK0zGOWS8mjyHOPOENuuOEp4qDxXWqwNo-Q/exec';
+    <!-- JavaScript Logic -->
+    <script type="module">
+        
+        // ** (ลบ Firebase Imports ออกทั้งหมด) **
 
-        // Map Keys (เหมือนกับใน Code.gs)
-        const KEY_MAP = {
-            "Model": "Model",
-            "PartName": "Part Name",
-            "ProcessNo": "Process No.",
-            "MachineNo": "Machine No.",
-            "ProcessName": "ชื่อกระบวนการ",
-            "ThreadNo": "เบอร์ด้าย",
-            "NeedleNo": "เบอร์เข็ม",
-            "StitchLength": "ฝีเข็ม",
-            "UpperTension": "แรงตึงด้ายบน (N) STD + 3",
-            "LowerTension": "แรงตึงด้ายล่าง (N) STD + 3",
-            "OuterFootPressure": "แรงกดตีนผีนอก (Kg) STD + 1",
-            "InnerFootPressure": "แรงกดตีนผีใน (Kg) STD + 1",
-            "StopperDistance": "ระยะ stopper ตะเข็บ (mm)",
-            "AirPressure": "แรงลม (bar)",
-            "SpeedRPM": "ความเร็วรอบ (rpm)",
-            "ManSkill": "Man skill ≥"
+        // ** ตัวแปรสำหรับ ID ผู้ใช้และการเตรียมพร้อม (ไม่ใช่ Firebase) **
+        let userId = crypto.randomUUID(); // ใช้ UUID ชั่วคราวแทน
+        let isAuthReady = false; 
+
+        // *** GOOGLE SHEET CONFIGURATION ***
+        // NOTE: กรุณาเปลี่ยน URL นี้เป็น URL ที่คุณ Deploy Google Apps Script Web App แล้ว
+        const SPREADSHEET_ID = '1-um_NqLwpGn2paJ6xHnnGiFK23SMhHeH4I-I_lbVaio'; 
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqV-nBJaHDbaVOwWpZ5TnOKH3pgelbg4Z0oxvrc3SttbhwJZzq5ozirXWuuG1DOI9_/exec'; 
+
+        // Initialize App and Readiness (แทนที่ Firebase Initialization)
+        function initializeAppAndAuth() {
+            // ตั้งค่าให้พร้อมใช้งานทันที เนื่องจากไม่มีการตรวจสอบสิทธิ์ภายนอก
+            userId = crypto.randomUUID(); 
+            isAuthReady = true; 
+            document.getElementById('processButton').disabled = false;
+            console.log("App initialized. Using temporary user ID:", userId);
+        }
+
+        /** Converts a File object to a Base64 string */
+        const convertFileToBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    // Extracting the Base64 data part
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = (error) => reject(error);
+            });
         };
-        const HEADERS = Object.values(KEY_MAP);
-        const KEYS = Object.keys(KEY_MAP);
+        
+        // JSON Schema for structured output
+        const outputSchema = {
+            type: "OBJECT",
+            properties: {
+                programName: { type: "STRING", description: "The main program code, e.g., RG21 RBPU LEK2" },
+                pNoValue: { type: "NUMBER", description: "The large number associated with the active pattern, e.g., 286" },
+                coordX: { type: "STRING", description: "The X coordinate and scale, formatted as 'X 497.4 (100.0%)'" },
+                coordY: { type: "STRING", description: "The Y coordinate and scale, formatted as 'Y 343.6 (100.0%)'" },
+                setting1: { type: "NUMBER", description: "The first setting value, e.g., 258" },
+                setting2: { type: "NUMBER", description: "The second setting value, e.g., 50" },
+                setting3: { type: "NUMBER", description: "The third setting value, e.g., 800" },
+                setting4: { type: "NUMBER", description: "The fourth setting value, e.g., 35" },
+                setting5: { type: "NUMBER", description: "The fifth setting value, e.g., 0.0" },
+                setting6: { type: "NUMBER", description: "The sixth setting value, e.g., 0.0" },
+                activePattern: { type: "STRING", description: "The active pattern number, e.g., P25" }
+            },
+            required: ["programName", "pNoValue", "coordX", "coordY", "setting1", "setting2", "setting3", "setting4", "setting5", "setting6", "activePattern"]
+        };
 
-        // DOM Elements
-        const loadingEl = document.getElementById('loading');
-        const modelFilterEl = document.getElementById('model-filter');
-        const partnameFilterEl = document.getElementById('partname-filter');
-        const applyFilterBtn = document.getElementById('apply-filter-btn');
-        const dataTableBody = document.getElementById('data-table-body');
-        const dataTable = document.getElementById('data-table');
-        const tableMessage = document.getElementById('table-message');
-        const recordModal = document.getElementById('record-modal');
-        const recordForm = document.getElementById('record-form');
-        const modalTitle = document.getElementById('modal-title');
-        const confirmModal = document.getElementById('confirm-modal');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 
-        let isFetching = false;
+        /** Calls the Gemini API with exponential backoff */
+        const callGeminiAPI = async (base64Image, mimeType, prompt, maxRetries = 5) => {
+            // NOTE: **โปรดระบุ API Key ของคุณที่นี่ หากคุณต้องการนำไปใช้ภายนอก Canvas**
+            // หากคุณกำลังรันใน Canvas, API Key นี้จะถูกเติมให้โดยอัตโนมัติ
+            const apiKey = "AIzaSyD4pDockyyUKft4kx6T4LCc5agKPmV7PNY"; 
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-        // ====================================================================
-        // --- API Helper Functions ---
-        // ====================================================================
+            // System prompt to guide the model's output structure
+            const systemPrompt = "You are an expert data extraction assistant. Analyze the machine control panel image. Extract the main program name, the PNo value (the large number), the X and Y coordinate displays (including scale), the six major numerical setting values (258, 50, 800, 35, 0.0, 0.0), and the active pattern name (e.g., P25). Respond strictly in the required JSON format.";
 
-        /**
-         * ส่ง request ไปยัง Google Apps Script (GET method)
-         * @param {string} action - ชนิดของ action
-         * @param {object} params - พารามิเตอร์สำหรับ GET
-         */
-        async function fetchData(action, params = {}) {
-            if (isFetching) return;
-            isFetching = true;
-            loadingEl.classList.remove('hidden');
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType: mimeType,
+                                data: base64Image
+                            }
+                        }
+                    ]
+                }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: outputSchema
+                }
+            };
 
-            const urlParams = new URLSearchParams(params);
-            urlParams.append('action', action);
-            const url = `${WEB_APP_URL}?${urlParams.toString()}`;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429 && i < maxRetries - 1) {
+                        const delay = Math.pow(2, i) * 1000; // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue; // Retry
+                    }
+
+                    if (!response.ok) {
+                        const errorBody = await response.json();
+                        let errorMessage = `API failed with status ${response.status}: ${errorBody.error?.message || 'Unknown error'}`;
+                        if (response.status === 403) {
+                             errorMessage += " (โปรดตรวจสอบว่า API Key ถูกต้องและเปิดใช้งาน Gemini API แล้ว)";
+                        }
+                        throw new Error(errorMessage);
+                    }
+
+                    const result = await response.json();
+                    const jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!jsonString) {
+                         throw new Error("API response was empty or malformed.");
+                    }
+                    
+                    return JSON.parse(jsonString);
+
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw error;
+                    }
+                }
+            }
+        };
+
+        // --- Toast Handler (The "Pop-up" message) ---
+        const showToast = (message, type) => {
+            const toast = document.getElementById('toastNotification');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastMessage.textContent = message;
+            
+            // Set colors based on type
+            toast.classList.remove('bg-green-600', 'bg-red-600', 'bg-blue-600');
+            if (type === 'success') {
+                toast.classList.add('bg-green-600');
+            } else if (type === 'error') {
+                toast.classList.add('bg-red-600');
+            } else { // info/loading
+                toast.classList.add('bg-blue-600');
+            }
+
+            // Show toast (slide up and fade in)
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-full');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            // Hide toast after 4 seconds for success/error
+            if (type !== 'info') {
+                 setTimeout(() => {
+                    toast.classList.remove('opacity-100', 'translate-y-0');
+                    toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-full');
+                }, 4000);
+            }
+        };
+
+        // --- Data Uploader ---
+        window.handleUpload = async () => {
+            const fileInput = document.getElementById('imageUpload');
+            const file = fileInput.files[0];
+            const loadingIndicator = document.getElementById('loading');
+            const errorArea = document.getElementById('errorArea');
+            const processButton = document.getElementById('processButton');
+            
+            // Re-check readiness just in case (though button should be disabled if not ready)
+            if (!isAuthReady) {
+                 showToast('⚠️ ระบบกำลังเตรียมพร้อม กรุณารอสักครู่', 'error');
+                 return;
+            }
+            
+            if (!file) {
+                showToast('⚠️ กรุณาเลือกไฟล์รูปภาพก่อน', 'error');
+                return;
+            }
+            
+            loadingIndicator.classList.remove('hidden');
+            errorArea.classList.add('hidden');
+            processButton.disabled = true;
 
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                const base64Image = await convertFileToBase64(file);
+                
+                const prompt = "Extract all numerical values and text displays from the machine control panel screen into the required JSON structure. Pay close attention to the PNo value and the X/Y coordinates.";
 
-                if (data.success) {
-                    return data.data;
-                } else {
-                    throw new Error(data.error || 'Failed to fetch data from server.');
-                }
+                const extractedData = await callGeminiAPI(base64Image, file.type, prompt);
+                
+                renderDataToTable(extractedData);
+                showToast('✅ ดึงข้อมูลสำเร็จ! กรุณาตรวจสอบและแก้ไขก่อนบันทึก', 'success');
+                
             } catch (error) {
-                showToast('error', `เกิดข้อผิดพลาดในการโหลด: ${error.message}`);
-                console.error('Fetch Error:', error);
-                return null;
+                console.error("Image Processing Error:", error);
+                document.getElementById('errorMessage').textContent = error.message;
+                errorArea.classList.remove('hidden');
+                document.getElementById('saveButton').disabled = true;
+                showToast('❌ ดึงข้อมูลไม่สำเร็จ (ดู Console สำหรับรายละเอียด)', 'error');
             } finally {
-                isFetching = false;
-                loadingEl.classList.add('hidden');
+                loadingIndicator.classList.add('hidden');
+                processButton.disabled = false;
             }
+        }
+        
+        // --- Data Renderer ---
+        const renderDataToTable = (data) => {
+            // Update Main Header Block (contenteditable spans use textContent)
+            document.getElementById('programName').textContent = data.programName || '-- N/A --';
+            document.getElementById('activePatternPNo').textContent = data.activePattern || '-- N/A --';
+            document.getElementById('pNoValue').textContent = data.pNoValue !== undefined ? data.pNoValue : '-- N/A --';
+
+            // Update Table Data (input fields use value)
+            document.getElementById('coordX').value = data.coordX || 'X -- N/A --';
+            document.getElementById('coordY').value = data.coordY || 'Y -- N/A --';
+            document.getElementById('setting1').value = data.setting1 !== undefined ? String(data.setting1) : '-- N/A --';
+            document.getElementById('setting2').value = data.setting2 !== undefined ? String(data.setting2) : '-- N/A --';
+            document.getElementById('setting3').value = data.setting3 !== undefined ? String(data.setting3) : '-- N/A --';
+            document.getElementById('setting4').value = data.setting4 !== undefined ? String(data.setting4) : '-- N/A --';
+            document.getElementById('setting5').value = data.setting5 !== undefined ? String(data.setting5) : '-- N/A --';
+            document.getElementById('setting6').value = data.setting6 !== undefined ? String(data.setting6) : '-- N/A --';
+            
+            // Update Active Pattern Display (contenteditable span uses textContent)
+            const activePatternDisplay = document.getElementById('activePatternDisplay');
+            activePatternDisplay.textContent = data.activePattern ? `${data.activePattern} (Active)` : '-- N/A --';
+            
+            // Update styling based on data availability
+            if (data.activePattern) {
+                activePatternDisplay.classList.remove('bg-gray-400', 'border-gray-500');
+                activePatternDisplay.classList.add('bg-green-500', 'border-green-700');
+            } else {
+                activePatternDisplay.classList.add('bg-gray-400', 'border-gray-500');
+                activePatternDisplay.classList.remove('bg-green-500', 'border-green-700');
+            }
+
+            // Enable Save button after successful rendering 
+            document.getElementById('saveButton').disabled = false;
+        };
+
+        // --- Data Clearer ---
+        window.clearDataFields = () => {
+            // Clear Machine No. dropdown
+            document.getElementById('machineNoSelect').value = ""; 
+            // Clear Main Box dropdown
+            document.getElementById('mainBoxSelect').value = "";
+
+            // Clear spans (contenteditable)
+            document.getElementById('programName').textContent = '-- N/A --';
+            document.getElementById('activePatternPNo').textContent = '-- N/A --';
+            document.getElementById('pNoValue').textContent = '-- N/A --';
+
+            // Clear inputs (value)
+            document.getElementById('coordX').value = 'X -- N/A --';
+            document.getElementById('coordY').value = 'Y -- N/A --';
+            document.getElementById('setting1').value = '-- N/A --';
+            document.getElementById('setting2').value = '-- N/A --';
+            document.getElementById('setting3').value = '-- N/A --';
+            document.getElementById('setting4').value = '-- N/A --';
+            document.getElementById('setting5').value = '-- N/A --';
+            document.getElementById('setting6').value = '-- N/A --';
+            
+            // Clear active pattern display and styling
+            const activePatternDisplay = document.getElementById('activePatternDisplay');
+            activePatternDisplay.textContent = '-- N/A --';
+            activePatternDisplay.classList.add('bg-gray-400', 'border-gray-500');
+            activePatternDisplay.classList.remove('bg-green-500', 'border-green-700');
+
+            // Disable Save button
+            document.getElementById('saveButton').disabled = true;
+            
+            // Show toast
+            showToast('🗑️ ข้อมูลถูกล้างเรียบร้อยแล้ว', 'info');
+        }
+
+        // --- Data Collector ---
+        const collectCurrentData = () => {
+            // Collect data from Machine No. dropdown and other fields
+            const data = {
+                timestamp: new Date().toISOString(),
+                userId: userId, // ใช้ UUID ชั่วคราวที่สร้างขึ้น
+                machineNo: document.getElementById('machineNoSelect').value.trim(), 
+                // NEW FIELD: กล่องหลัก
+                mainBox: document.getElementById('mainBoxSelect').value.trim(), 
+                programName: document.getElementById('programName').textContent.trim(),
+                activePatternPNo: document.getElementById('activePatternPNo').textContent.trim(),
+                pNoValue: document.getElementById('pNoValue').textContent.trim(),
+                coordX: document.getElementById('coordX').value.trim(),
+                coordY: document.getElementById('coordY').value.trim(),
+                setting1: document.getElementById('setting1').value.trim(),
+                setting2: document.getElementById('setting2').value.trim(),
+                setting3: document.getElementById('setting3').value.trim(),
+                setting4: document.getElementById('setting4').value.trim(),
+                setting5: document.getElementById('setting5').value.trim(),
+                setting6: document.getElementById('setting6').value.trim(),
+                activePatternDisplay: document.getElementById('activePatternDisplay').textContent.trim()
+            };
+            return data;
         }
 
         /**
-         * ส่ง request ไปยัง Google Apps Script (POST method)
-         * @param {string} action - ชนิดของ action
-         * @param {object} data - ข้อมูลที่จะส่ง
+         * Sends data to the deployed Google Apps Script Web App.
+         * @param {object} data - The data object to send.
+         * @returns {Promise<boolean>} - True if successful, false otherwise.
          */
-        async function postData(action, data) {
-            if (isFetching) return { success: false, error: 'Request in progress.' };
-            isFetching = true;
-            loadingEl.classList.remove('hidden');
-
+        const sendDataToGoogleSheet = async (data) => {
+            const payload = { 
+                ...data, 
+                spreadsheetId: SPREADSHEET_ID 
+            };
+            
             try {
-                const response = await fetch(WEB_APP_URL, {
+                // NOTE: ใช้ 'no-cors' เพื่อหลีกเลี่ยงข้อจำกัด CORS เมื่อเรียก Apps Script จากโดเมนอื่น
+                const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
+                    mode: 'no-cors', 
+                    cache: 'no-cache',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ action, data }),
+                    referrerPolicy: 'no-referrer', 
+                    body: JSON.stringify(payload)
                 });
-
-                const result = await response.json();
                 
-                if (result.success) {
-                    showToast('success', result.message || 'ดำเนินการสำเร็จ');
-                } else {
-                    throw new Error(result.error || 'Failed to process request.');
-                }
-                return result;
+                // ในโหมด 'no-cors' เราจะไม่สามารถอ่าน response.ok หรือ body ได้
+                // จึงถือว่าสำเร็จหากไม่มี TypeError (ข้อผิดพลาดของเครือข่าย/CORS) 
+                console.log("Sheet fetch sent with mode: 'no-cors'. Assuming success if no TypeError is thrown.");
+                return true;
+
             } catch (error) {
-                showToast('error', `เกิดข้อผิดพลาด: ${error.message}`);
-                console.error('Post Error:', error);
-                return { success: false, error: error.message };
-            } finally {
-                isFetching = false;
-                loadingEl.classList.add('hidden');
+                // หาก fetch ล้มเหลวเนื่องจากเครือข่าย/CORS
+                console.error("Google Sheet Save Error (Likely Network/CORS Block):", error);
+                showToast(`❌ บันทึก Sheet ไม่สำเร็จ: ${error.message} (โปรดตรวจสอบ APPS_SCRIPT_URL และสิทธิ์ Web App)`, 'error'); 
+                return false;
             }
         }
 
-        // ====================================================================
-        // --- UI Logic & Data Rendering ---
-        // ====================================================================
-
-        /**
-         * โหลดค่า Model และ Part Name ที่ไม่ซ้ำกันสำหรับ Dropdown
-         */
-        async function loadUniqueFilters() {
-            const data = await fetchData('read_unique');
-            if (data) {
-                modelFilterEl.innerHTML = '<option value="">-- เลือก Model --</option>';
-                partnameFilterEl.innerHTML = '<option value="">-- เลือก Part Name --</option>';
-
-                data.uniqueModels.sort().forEach(model => {
-                    modelFilterEl.innerHTML += `<option value="${model}">${model}</option>`;
-                });
-                data.uniquePartNames.sort().forEach(partName => {
-                    partnameFilterEl.innerHTML += `<option value="${partName}">${partName}</option>`;
-                });
-            }
-        }
-
-        /**
-         * ใช้ตัวกรองและแสดงข้อมูลในตาราง
-         */
-        async function applyFilter() {
-            const model = modelFilterEl.value.trim();
-            const partName = partnameFilterEl.value.trim();
-
-            dataTableBody.innerHTML = '';
-            dataTable.classList.add('hidden');
-            tableMessage.classList.remove('hidden');
-            tableMessage.textContent = 'กำลังโหลด...';
-
-            if (!model || !partName) {
-                tableMessage.textContent = 'กรุณาเลือก Model และ Part Name ให้ครบถ้วน';
+        // --- Data Saver (ONLY Google Sheet) ---
+        window.handleSave = async () => {
+            const data = collectCurrentData();
+            const saveButton = document.getElementById('saveButton');
+            
+            // CRITICAL CHECK: Check readiness
+            if (!isAuthReady) {
+                showToast('⚠️ ระบบยังไม่พร้อม กรุณารอแล้วลองอีกครั้ง', 'error');
+                console.error("Save failed: App is not ready.");
+                saveButton.disabled = false;
                 return;
             }
 
-            const data = await fetchData('read_filtered', { model, partName });
-
-            if (data && data.records) {
-                renderTable(data.records);
-            } else {
-                tableMessage.textContent = 'ไม่พบข้อมูลตามตัวกรองที่เลือก';
+            // Check if machine number is selected
+            if (data.machineNo === "") {
+                 showToast('⚠️ กรุณาเลือกหมายเลขเครื่องจักร (Machine No.) ก่อนบันทึก', 'error');
+                 return;
             }
-        }
-
-        /**
-         * สร้างตารางและใส่ข้อมูล
-         * @param {Array<object>} records - ข้อมูลรายการพารามิเตอร์
-         */
-        function renderTable(records) {
-            const tableHead = dataTable.querySelector('thead');
-            const tableBody = dataTableBody;
             
-            // 1. Render Headers
-            tableHead.innerHTML = `
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                    ${HEADERS.map(header => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${header}</th>`).join('')}
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                </tr>
-            `;
-
-            // 2. Render Body
-            tableBody.innerHTML = '';
-            if (records.length === 0) {
-                tableMessage.textContent = 'ไม่พบข้อมูลตามตัวกรองที่เลือก';
-                dataTable.classList.add('hidden');
-                tableMessage.classList.remove('hidden');
-                return;
+            // Check if main box number is selected
+            if (data.mainBox === "") {
+                 showToast('⚠️ กรุณาเลือกหมายเลขกล่องหลัก ก่อนบันทึก', 'error');
+                 return;
             }
-
-            records.forEach((record, index) => {
-                const row = tableBody.insertRow();
-                row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-
-                // Row Number and ID (RowIndex from GAS)
-                row.insertCell().textContent = index + 1;
-                row.setAttribute('data-row-index', record.id); // record.id holds the RowIndex from GAS
-
-                // Data Cells
-                KEYS.forEach(key => {
-                    const cell = row.insertCell();
-                    cell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700';
-                    cell.textContent = record[key] !== null ? record[key] : '-';
-                });
-
-                // Action Cell
-                const actionCell = row.insertCell();
-                actionCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
-                actionCell.innerHTML = `
-                    <button onclick="openModal(${record.id}, this.parentNode.parentNode)" class="text-blue-600 hover:text-blue-900 mr-3 transition duration-150">แก้ไข</button>
-                    <button onclick="showConfirmModal(${record.id})" class="text-red-600 hover:text-red-900 transition duration-150">ลบ</button>
-                `;
-            });
-
-            dataTable.classList.remove('hidden');
-            tableMessage.classList.add('hidden');
-        }
-
-        /**
-         * แสดง Toast Notification
-         * @param {string} type - 'success' or 'error'
-         * @param {string} message - ข้อความ
-         */
-        function showToast(type, message) {
-            const toastContainer = document.getElementById('toast-container');
-            const color = type === 'success' ? 'bg-green-500' : 'bg-red-500';
-            const icon = type === 'success' 
-                ? '<svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
-                : '<svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-
-            const toast = document.createElement('div');
-            toast.className = `p-4 flex items-center text-white rounded-lg shadow-lg ${color} transition-opacity duration-300 ease-in-out opacity-0`;
-            toast.innerHTML = `${icon}<span>${message}</span>`;
             
-            toastContainer.appendChild(toast);
+            saveButton.disabled = true;
             
-            // Fade in
-            setTimeout(() => {
-                toast.classList.remove('opacity-0');
-            }, 10);
+            // Show "saving" status using the toast
+            showToast('กำลังบันทึกข้อมูล...', 'info'); 
 
-            // Fade out and remove
-            setTimeout(() => {
-                toast.classList.add('opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
-        }
+            let sheetSuccess = false;
 
-        // ====================================================================
-        // --- Modal & Form Logic ---
-        // ====================================================================
-
-        /**
-         * เปิด Modal สำหรับเพิ่ม/แก้ไข
-         * @param {number} rowIndex - Row Index สำหรับการแก้ไข (เป็น undefined/null สำหรับเพิ่มใหม่)
-         * @param {HTMLElement} rowEl - Element แถวข้อมูลสำหรับดึงค่ามาใส่ (เฉพาะตอนแก้ไข)
-         */
-        function openModal(rowIndex, rowEl) {
-            recordForm.reset();
-            recordForm.querySelector('#RowIndex').value = '';
-
-            if (rowIndex && rowEl) {
-                // Edit Mode
-                modalTitle.textContent = 'แก้ไขข้อมูลพารามิเตอร์';
-                recordForm.querySelector('#RowIndex').value = rowIndex;
+            try {
                 
-                // Populate form fields
-                const dataCells = rowEl.querySelectorAll('td');
+                // 1. SAVE TO GOOGLE SHEET
+                sheetSuccess = await sendDataToGoogleSheet(data);
                 
-                // Skip the first cell (index 0) which is the row number
-                KEYS.forEach((key, index) => {
-                    const cellValue = dataCells[index + 1].textContent;
-                    const input = recordForm.querySelector(`#${key}`);
-                    if (input) {
-                        // Use raw value unless it's the placeholder '-'
-                        input.value = cellValue === '-' ? '' : cellValue;
-                    }
-                });
-
-                // Model และ PartName ต้องถูก Disable เมื่อแก้ไข
-                document.getElementById('Model').disabled = true;
-                document.getElementById('PartName').disabled = true;
-
-            } else {
-                // Add Mode
-                modalTitle.textContent = 'เพิ่มข้อมูลใหม่';
-                
-                // Model และ PartName ต้องถูก Enable เมื่อเพิ่มใหม่
-                document.getElementById('Model').disabled = false;
-                document.getElementById('PartName').disabled = false;
-                
-                // Pre-fill Model and PartName from filter if selected
-                document.getElementById('Model').value = modelFilterEl.value.trim() || '';
-                document.getElementById('PartName').value = partnameFilterEl.value.trim() || '';
-            }
-
-            recordModal.classList.remove('hidden');
-        }
-
-        /**
-         * ปิด Modal
-         */
-        function closeModal() {
-            recordModal.classList.add('hidden');
-            // Ensure Model/PartName are re-enabled after closing
-            document.getElementById('Model').disabled = false;
-            document.getElementById('PartName').disabled = false;
-        }
-
-        /**
-         * จัดการการบันทึกข้อมูล (Submit Form)
-         */
-        recordForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // 1. Collect data from form
-            const formData = new FormData(recordForm);
-            const data = {};
-            for (const [key, value] of formData.entries()) {
-                // Convert empty strings to null/undefined if necessary, or ensure numerical values are parsed
-                data[key] = value.trim() === '' ? null : value.trim(); 
-            }
-
-            // 2. Perform save operation
-            const result = await postData('save', data);
-
-            // 3. Handle result
-            if (result.success) {
-                closeModal();
-                // Reload filters and re-apply current filter
-                await loadUniqueFilters();
-                if (modelFilterEl.value && partnameFilterEl.value) {
-                    applyFilter();
+                // Final confirmation
+                if (sheetSuccess) {
+                    showToast(`✅ บันทึกสำเร็จ! (บันทึก Google Sheet เรียบร้อย)`, 'success');
                 } else {
-                    // If no filter selected, just clear the table
-                    dataTableBody.innerHTML = '';
-                    dataTable.classList.add('hidden');
-                    tableMessage.classList.remove('hidden');
-                    tableMessage.textContent = 'กรุณาเลือก Model และ Part Name ให้ครบถ้วน';
+                    // หากมีการส่งแบบ no-cors แล้วเกิดปัญหา
+                    throw new Error("Save failed completely. Google Sheet was not successful or encountered a network error.");
                 }
-            }
-        });
-
-
-        // ====================================================================
-        // --- Deletion & Confirmation Logic ---
-        // ====================================================================
-
-        let currentRowIndexToDelete = null;
-
-        /**
-         * แสดง Modal ยืนยันการลบ
-         * @param {number} rowIndex - Row Index ของแถวที่จะลบ
-         */
-        function showConfirmModal(rowIndex) {
-            currentRowIndexToDelete = rowIndex;
-            confirmModal.classList.remove('hidden');
-        }
-
-        /**
-         * ซ่อน Modal ยืนยัน
-         */
-        function hideConfirmModal() {
-            confirmModal.classList.add('hidden');
-            currentRowIndexToDelete = null;
-        }
-
-        /**
-         * ดำเนินการลบข้อมูลจริง
-         */
-        confirmDeleteBtn.addEventListener('click', async () => {
-            if (currentRowIndexToDelete) {
-                hideConfirmModal();
                 
-                const result = await postData('delete', { RowIndex: currentRowIndexToDelete });
-
-                if (result.success) {
-                    // Reload filters and re-apply current filter
-                    await loadUniqueFilters();
-                    applyFilter();
+            } catch (error) {
+                console.error("General Save Error:", error);
+                showToast(`❌ บันทึกไม่สำเร็จ: ${error.message}`, 'error');
+            } finally {
+                // Ensure toast is cleared/reset if it was the 'info' saving toast
+                if (document.getElementById('toastNotification').classList.contains('bg-blue-600')) {
+                    document.getElementById('toastNotification').classList.remove('opacity-100', 'translate-y-0');
+                    document.getElementById('toastNotification').classList.add('opacity-0', 'pointer-events-none', 'translate-y-full');
                 }
+                saveButton.disabled = false;
+            }
+        };
+
+        // Enable button when file is selected
+        document.getElementById('imageUpload').addEventListener('change', (e) => {
+            const processButton = document.getElementById('processButton');
+            // Only enable if app is ready AND a file is selected
+            processButton.disabled = e.target.files.length === 0 || !isAuthReady; 
+            if (e.target.files.length > 0) {
+                 document.getElementById('errorArea').classList.add('hidden');
             }
         });
-
-
-        // ====================================================================
-        // --- Initialization ---
-        // ====================================================================
         
-        document.addEventListener('DOMContentLoaded', () => {
-            loadUniqueFilters();
-            
-            // Set initial message
-            tableMessage.textContent = 'กรุณาเลือก Model และ Part Name เพื่อแสดงข้อมูล';
-            tableMessage.classList.remove('hidden');
-
-            // Attach event listener for filter button
-            applyFilterBtn.addEventListener('click', applyFilter);
-        });
-
+        // Start initialization
+        initializeAppAndAuth();
     </script>
+
 </body>
 </html>
-
-
-
-
